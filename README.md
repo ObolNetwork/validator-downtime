@@ -2,7 +2,7 @@
 
 Interactive tool for understanding what correlated downtime costs Ethereum validators under the **revised EIP-7716** anti-correlation penalties (2026 mechanism, [ethereum/EIPs#11962](https://github.com/ethereum/EIPs/pull/11962), proposed for the Hegotá fork).
 
-**Live site**: [validatordowntime.obol.tech](https://validatordowntime.obol.tech)
+**Live site**: [validatordowntime.obol.org](https://validatordowntime.obol.org)
 
 ## Overview
 
@@ -66,7 +66,7 @@ npm run lint       # ESLint
 
 ## Deployment
 
-Automatic GitHub Pages deployment on push to `main` via GitHub Actions. Custom domain: CNAME `validatordowntime.obol.tech` → `obolnetwork.github.io`.
+Automatic GitHub Pages deployment on push to `main` via GitHub Actions. Custom domain: `static/CNAME` sets `validatordowntime.obol.org`; DNS needs a CNAME record pointing it at `obolnetwork.github.io`. The site is served at the domain root, so no Gatsby path prefix is used (it 404s all assets if hosted under a subpath like `obolnetwork.github.io/validator-downtime`).
 
 ## Resources
 

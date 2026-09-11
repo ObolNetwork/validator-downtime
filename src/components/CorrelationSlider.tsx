@@ -12,8 +12,13 @@ interface CorrelationSliderProps {
 const THRESHOLD = 100 / 3; // ⅓ of stake — cap binds, finality at risk
 
 export function CorrelationSlider({ value, onChange }: CorrelationSliderProps) {
+  const [pickedChip, setPickedChip] = React.useState<string | null>(null);
+
   const handleChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => onChange(parseFloat(e.target.value)),
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setPickedChip(null);
+      onChange(parseFloat(e.target.value));
+    },
     [onChange]
   );
 
@@ -93,8 +98,16 @@ export function CorrelationSlider({ value, onChange }: CorrelationSliderProps) {
         {CLIENT_SHARES.map((c) => (
           <button
             key={c.name}
-            className={`chip ${Math.abs(value - Math.min(c.percent, MAX_EVENT_PERCENT)) < 0.3 ? "active" : ""}`}
-            onClick={() => onChange(Math.min(c.percent, MAX_EVENT_PERCENT))}
+            className={`chip ${
+              pickedChip === c.name &&
+              Math.abs(value - Math.min(c.percent, MAX_EVENT_PERCENT)) < 0.3
+                ? "active"
+                : ""
+            }`}
+            onClick={() => {
+              setPickedChip(c.name);
+              onChange(Math.min(c.percent, MAX_EVENT_PERCENT));
+            }}
             title={`${c.name} ≈ ${c.percent}% of ${c.layer} nodes${c.percent > THRESHOLD ? " — above the finality threshold" : ""}`}
           >
             {c.name} <em>{c.percent}%</em>

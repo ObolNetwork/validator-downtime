@@ -670,13 +670,13 @@ export const Head: HeadFC = () => (
       content="What does correlated downtime cost under the revised EIP-7716? Front-loaded penalties, real-event replays, and days-to-recover — interactively."
     />
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://validatordowntime.obol.tech" />
+    <meta property="og:url" content="https://validatordowntime.obol.org" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="EIP-7716 Validator Downtime Calculator" />
     <meta
       name="twitter:description"
       content="What does correlated downtime cost under the revised EIP-7716? Interactive penalties, real-event replays, days-to-recover."
     />
-    <link rel="canonical" href="https://validatordowntime.obol.tech" />
+    <link rel="canonical" href="https://validatordowntime.obol.org" />
   </>
 );

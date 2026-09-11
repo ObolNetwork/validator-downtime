@@ -187,7 +187,8 @@ export function EventPresets({ onLoad }: EventPresetsProps) {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          gap: 0.4rem;
+          flex-wrap: wrap;
+          gap: 0.3rem 0.5rem;
           padding: 0.5rem 0.6rem;
           background: var(--bg-secondary, #111F22);
           border-radius: 8px;
@@ -196,6 +197,7 @@ export function EventPresets({ onLoad }: EventPresetsProps) {
         .preset-paybacks > div {
           display: flex;
           flex-direction: column;
+          min-width: 0;
         }
 
         .pb-label {
@@ -203,12 +205,14 @@ export function EventPresets({ onLoad }: EventPresetsProps) {
           text-transform: uppercase;
           letter-spacing: 0.07em;
           color: var(--text-muted, #667A80);
+          white-space: nowrap;
         }
 
         .pb-value {
           font-family: var(--font-mono);
-          font-size: 0.82rem;
+          font-size: 0.78rem;
           font-weight: 600;
+          white-space: nowrap;
         }
 
         .pb-value.today {
@@ -221,9 +225,10 @@ export function EventPresets({ onLoad }: EventPresetsProps) {
 
         .pb-mult {
           font-family: var(--font-mono);
-          font-size: 0.78rem;
+          font-size: 0.74rem;
           font-weight: 700;
           color: var(--orange, #DD603C);
+          white-space: nowrap;
         }
 
         .preset-detail {
