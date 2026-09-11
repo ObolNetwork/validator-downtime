@@ -1,0 +1,31 @@
+feat: rebuild calculator for the 2026 EIP-7716 revision
+
+Replace the obsolete 2024 counter-based model (1x-4x) with the revised
+mechanism (PR ethereum/EIPs#11962, PFI for Hegota): the timely-target
+penalty scales with the excess of offline balance over a slow-moving
+average, factor = min(1 + 765 * offline_share, 256).
+
+Engine:
+- New outage model: event size, cohort outage duration, own downtime,
+  stake -> loss ETH/USD under today vs revised rules, payback days,
+  multiple, and EIP-vs-inactivity-leak split for >1/3 events
+- Approved <=48h approximation (onset factor while cohort down, 1x after)
+- 20 vitest vectors pin every row of the canonical anchors table (+-5%)
+- Economics split: July 2026 research anchors (tests) vs Sept 2026
+  display defaults (41.8M ETH staked, 2.57% ETH.STORE APR, ETH $2,450)
+
+UI:
+- Event-size slider 0-45% with onset-factor readout, 1/3 finality
+  threshold marker, and clientdiversity.org quick-picks
+- Independent cohort/your-downtime controls (fast responder vs straggler)
+- Front-loaded cost-curve chart (cost vs hours down) with a "x today"
+  fairness view showing the multiple falling as recovery stretches
+- Real-event presets with replay-measured numbers (May 2023, Besu,
+  Nethermind, Prysm post-Fusaka)
+- Copy/FAQ rewritten around front-loading, the both-flags gate, never
+  below 1x, burn-not-redistribute, and honest leak attribution
+- Archivo + IBM Plex Mono type system on the existing Obol palette
+
+Docs: README and CLAUDE.md rewritten for the new mechanism and model.
+
+Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>

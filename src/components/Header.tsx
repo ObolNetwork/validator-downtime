@@ -45,14 +45,14 @@ export function Header() {
 
         <nav className="header-nav">
           <a
-            href="https://eips.ethereum.org/EIPS/eip-7716"
+            href="https://github.com/ethereum/EIPs/pull/11962"
             target="_blank"
             rel="noopener noreferrer"
           >
             EIP-7716
           </a>
           <a
-            href="https://ethresear.ch/t/diseconomies-of-scale-anti-correlation-penalties-eip-7716/20114"
+            href="https://ethresear.ch/t/supporting-decentralized-staking-through-more-anti-correlation-incentives/19116/18"
             target="_blank"
             rel="noopener noreferrer"
           >

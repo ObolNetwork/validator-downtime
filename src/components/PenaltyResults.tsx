@@ -1,128 +1,127 @@
 import * as React from "react";
 import { useState } from "react";
 import {
-  calculatePenalty,
-  calculateRecoveryTime,
-  getPenaltyDescription,
-  getFormulaDisplay,
-  type PenaltyCalculationResult,
+  calculateOutage,
+  formatUsd,
+  formatEth,
+  formatFactor,
+  formatPaybackDays,
+  formatHours,
 } from "../lib/penaltyCalculator";
 import {
+  DEFAULT_ECONOMICS,
   MAX_PENALTY_FACTOR,
-  PENALTY_ADJUSTMENT_FACTOR,
-  DEFAULT_DOWNTIME_HOURS,
+  PENALTY_SLOPE,
 } from "../lib/constants";
 
 interface PenaltyResultsProps {
-  offlinePercentage: number;
+  eventPercent: number;
+  cohortHours: number;
+  validatorHours: number;
+  stakeEth: number;
 }
 
-export function PenaltyResults({ offlinePercentage }: PenaltyResultsProps) {
+export function PenaltyResults({
+  eventPercent,
+  cohortHours,
+  validatorHours,
+  stakeEth,
+}: PenaltyResultsProps) {
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const result: PenaltyCalculationResult = calculatePenalty(offlinePercentage);
-  const recovery = calculateRecoveryTime(result.penaltyFactor);
-  const description = getPenaltyDescription(result.penaltyFactor);
-  const formula = getFormulaDisplay();
+  const econ = DEFAULT_ECONOMICS;
 
-  // Calculate position on the visual scale (1x to 4x)
-  const scalePosition =
-    ((result.penaltyFactor - 1) / (MAX_PENALTY_FACTOR - 1)) * 100;
+  const r = calculateOutage(
+    {
+      eventFraction: eventPercent / 100,
+      cohortHoursDown: cohortHours,
+      validatorHoursDown: validatorHours,
+      stakeEth,
+    },
+    econ
+  );
 
-  // Obol-themed severity colors
-  const severityColors: Record<
-    PenaltyCalculationResult["severityLevel"],
-    string
-  > = {
-    minimal: "#2FE4AB",    // obol-green
-    moderate: "#E89E30",   // obol-gold
-    significant: "#DD603C", // orange
-    severe: "#CC3333",     // red
-  };
+  const multipleColor =
+    r.multiple < 1.5 ? "#2FE4AB" : r.multiple < 8 ? "#E89E30" : r.multiple < 25 ? "#DD603C" : "#CC3333";
 
-  const color = severityColors[result.severityLevel];
+  const leakShare = r.revisedLossUsd > 0 ? r.leakLossUsd / r.revisedLossUsd : 0;
+
+  const b = r.breakdown;
 
   return (
     <div className="penalty-results">
-      <h3>Penalty Impact Under EIP-7716</h3>
-      <p className="downtime-note">
-        Based on {DEFAULT_DOWNTIME_HOURS} hours of downtime
-      </p>
-
-      <div className="result-grid">
-        <div className="result-card main-card">
-          <div className="result-label">Penalty Multiplier</div>
-          <div className="result-value" style={{ color }}>
-            {result.penaltyFactor.toFixed(2)}x
-          </div>
-
-          <div className="penalty-scale">
-            <div className="scale-bar">
-              <div
-                className="scale-fill"
-                style={{
-                  width: `${scalePosition}%`,
-                  backgroundColor: color,
-                }}
-              />
-              <div
-                className="scale-marker"
-                style={{
-                  left: `${scalePosition}%`,
-                  backgroundColor: color,
-                }}
-              />
-            </div>
-            <div className="scale-labels">
-              <span>1x</span>
-              <span>2x</span>
-              <span>3x</span>
-              <span>4x</span>
-            </div>
+      <div className="results-grid">
+        <div className="rule-card today">
+          <div className="rule-label">Today&rsquo;s rules</div>
+          <div className="rule-usd">{formatUsd(r.todayLossUsd)}</div>
+          <div className="rule-eth">{formatEth(r.todayLossEth)}</div>
+          <div className="rule-payback">
+            <span>{formatPaybackDays(r.paybackDaysToday)}</span> of rewards to re-earn
           </div>
         </div>
 
-        <div className="result-card">
-          <div className="result-label">Extra Loss vs Solo Staker</div>
-          <div className="result-value secondary" style={{ color }}>
-            +{result.relativeIncrease.toFixed(0)}%
+        <div className="multiple-block" aria-label="Cost multiple versus today's rules">
+          <div className="multiple-value" style={{ color: multipleColor }}>
+            {r.multiple < 10 ? r.multiple.toFixed(1) : Math.round(r.multiple)}×
           </div>
-          <div className="result-subtext">
-            {result.relativeIncrease > 0
-              ? `You lose ${result.relativeIncrease.toFixed(0)}% more than an uncorrelated validator`
-              : "No additional penalty - your downtime appears uncorrelated"}
-          </div>
+          <div className="multiple-label">today&rsquo;s cost</div>
+          <svg className="multiple-arrow" width="52" height="14" viewBox="0 0 52 14" aria-hidden="true">
+            <path d="M0 7 H44 M44 7 L37 1.5 M44 7 L37 12.5" stroke={multipleColor} strokeWidth="2" fill="none" />
+          </svg>
         </div>
 
-        <div className="result-card">
-          <div className="result-label">Recovery Time</div>
-          <div className="result-value secondary">
-            {result.penaltyFactor <= 1.01 ? "None" : recovery.formatted}
+        <div className="rule-card revised">
+          <div className="rule-label">
+            EIP-7716 revised
+            <span className="factor-badge" style={{ borderColor: multipleColor, color: multipleColor }}>
+              {formatFactor(r.factor)}
+              {r.capBinds ? " cap" : ""}
+            </span>
           </div>
-          <div className="result-subtext">
-            Time to earn back the extra penalty through normal attestation rewards
+          <div className="rule-usd" style={{ color: multipleColor }}>
+            {formatUsd(r.revisedLossUsd)}
+          </div>
+          <div className="rule-eth">{formatEth(r.revisedLossEth)}</div>
+          <div className="rule-payback">
+            <span>{formatPaybackDays(r.paybackDaysRevised)}</span> of rewards to re-earn
           </div>
         </div>
       </div>
 
-      <div className="severity-banner" style={{ borderColor: color }}>
-        <span className="severity-badge" style={{ backgroundColor: color }}>
-          {result.severityLevel.toUpperCase()}
-        </span>
-        <p>{description}</p>
+      {r.leakActive && (
+        <div className="leak-split">
+          <div className="leak-split-header">
+            <strong>Above ⅓ offline, finality stops</strong> — the pre-existing inactivity
+            leak activates and grows quadratically. It applies under both rule sets; don&rsquo;t
+            attribute it to EIP-7716.
+          </div>
+          <div className="leak-bar" role="img" aria-label={`EIP-7716 share ${formatUsd(r.eipOnlyLossUsd)}, inactivity leak share ${formatUsd(r.leakLossUsd)}`}>
+            <div className="leak-bar-eip" style={{ width: `${(1 - leakShare) * 100}%` }}>
+              <span>EIP-7716 · {formatUsd(r.eipOnlyLossUsd)}</span>
+            </div>
+            <div className="leak-bar-leak" style={{ width: `${leakShare * 100}%` }}>
+              <span>Inactivity leak · {formatUsd(r.leakLossUsd)}</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="context-line">
+        Per {stakeEth} ETH, earning ≈ {formatUsd(b.dailyRewardsEth * econ.ethPriceUsd)}/day
+        ({(econ.aprInclEl * 100).toFixed(2)}% APR incl. EL, {econ.label}) · ETH at{" "}
+        {formatUsd(econ.ethPriceUsd)} · {(econ.totalStakedEth / 1e6).toFixed(1)}M ETH staked
       </div>
 
-      {/* Advanced Section - Collapsible */}
       <div className="advanced-section">
         <button
           className="advanced-toggle"
           onClick={() => setShowAdvanced(!showAdvanced)}
           aria-expanded={showAdvanced}
         >
-          <span>Advanced: Calculation Details</span>
+          <span>How this number is built</span>
           <svg
             className={`chevron ${showAdvanced ? "open" : ""}`}
-            width="20"
-            height="20"
+            width="18"
+            height="18"
             viewBox="0 0 20 20"
             fill="none"
           >
@@ -138,218 +137,257 @@ export function PenaltyResults({ offlinePercentage }: PenaltyResultsProps) {
 
         {showAdvanced && (
           <div className="advanced-content">
-            {/* EIP-7716 Formula */}
-            <div className="formula-section">
-              <h4>EIP-7716 Penalty Formula</h4>
-              <code className="formula-code">{formula.formula}</code>
+            <table className="breakdown-table">
+              <thead>
+                <tr>
+                  <th>Component</th>
+                  <th>Today</th>
+                  <th>Revised</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>
+                    Forgone rewards <em>({formatHours(validatorHours)} down, 54/64 weight)</em>
+                  </td>
+                  <td>{formatUsd(b.forgoneEth * econ.ethPriceUsd)}</td>
+                  <td>{formatUsd(b.forgoneEth * econ.ethPriceUsd)}</td>
+                </tr>
+                <tr>
+                  <td>
+                    Source penalty <em>(14/64 — never scaled)</em>
+                  </td>
+                  <td>{formatUsd(b.sourcePenaltyEth * econ.ethPriceUsd)}</td>
+                  <td>{formatUsd(b.sourcePenaltyEth * econ.ethPriceUsd)}</td>
+                </tr>
+                <tr>
+                  <td>
+                    Target penalty <em>(26/64 — scaled {formatFactor(r.factor)} for{" "}
+                    {formatHours(b.epochsAtHighFactor / 9.375)} while the cohort is down)</em>
+                  </td>
+                  <td>{formatUsd(b.targetPenaltyTodayEth * econ.ethPriceUsd)}</td>
+                  <td>{formatUsd(b.targetPenaltyRevisedEth * econ.ethPriceUsd)}</td>
+                </tr>
+                {r.leakActive && (
+                  <tr>
+                    <td>
+                      Inactivity leak{" "}
+                      <em>
+                        (pre-existing, both rule sets — accrues only while finality is lost:{" "}
+                        {formatHours(Math.min(validatorHours, cohortHours))})
+                      </em>
+                    </td>
+                    <td>{formatUsd(b.leakEth * econ.ethPriceUsd)}</td>
+                    <td>{formatUsd(b.leakEth * econ.ethPriceUsd)}</td>
+                  </tr>
+                )}
+                <tr className="total-row">
+                  <td>Total</td>
+                  <td>{formatUsd(r.todayLossUsd)}</td>
+                  <td>{formatUsd(r.revisedLossUsd)}</td>
+                </tr>
+              </tbody>
+            </table>
 
-              <div className="variables-grid">
-                {formula.variables.map((v) => (
-                  <div key={v.name} className="variable-row">
-                    <code className="var-name">{v.name}</code>
-                    <span className="var-value">{v.value}</span>
-                    <span className="var-desc">{v.description}</span>
-                  </div>
-                ))}
-              </div>
+            <div className="model-notes">
+              <p>
+                Penalty factor: <code>min(1 + {PENALTY_SLOPE} × offline_share, {MAX_PENALTY_FACTOR})</code>{" "}
+                at outage onset. The smoothing average has a ~12.6-day half-life, so within
+                events ≤48h the factor ≈ the onset factor while the cohort is down, and ≈ 1×
+                once it recovers. This approximation is exact within ~5% for events up to
+                48h; the integer-exact model lives in the{" "}
+                <a href="https://github.com/OisinKyne/7716" target="_blank" rel="noopener noreferrer">
+                  research repo
+                </a>
+                .
+              </p>
+              <p>
+                Base reward per epoch at {(econ.totalStakedEth / 1e6).toFixed(1)}M ETH staked:{" "}
+                <code>{formatEth(b.baseRewardPerEpochEth)}</code> per {stakeEth} ETH. Scaling
+                applies only to validators missing <strong>both</strong> the timely-source and
+                timely-target flags. For &gt;⅓ events, the leak is modeled as stopping the
+                moment finality resumes; in reality the inactivity score decays over the
+                following hours, so validators still offline then bleed slightly more —
+                negligible for short leaks, ~15–20% extra for stragglers after multi-day ones.
+                This is a draft EIP under discussion for the Hegotá fork — numbers are
+                estimates, not guarantees.
+              </p>
             </div>
-
-            {/* Calculation Steps */}
-            <div className="calculation-section">
-              <h4>Step-by-Step Calculation</h4>
-              <ol className="calculation-steps">
-                {result.breakdown.calculationSteps.map((step, i) => (
-                  <li key={i}>{step.substring(step.indexOf(" ") + 1)}</li>
-                ))}
-              </ol>
-            </div>
-
-            {/* Key Values */}
-            <div className="key-values-section">
-              <h4>Key Values Used</h4>
-              <div className="key-values-grid">
-                <div className="kv-item">
-                  <span className="kv-label">PENALTY_ADJUSTMENT_FACTOR</span>
-                  <code className="kv-value">{PENALTY_ADJUSTMENT_FACTOR}</code>
-                </div>
-                <div className="kv-item">
-                  <span className="kv-label">MAX_PENALTY_FACTOR</span>
-                  <code className="kv-value">{MAX_PENALTY_FACTOR}</code>
-                </div>
-                <div className="kv-item">
-                  <span className="kv-label">Base reward per epoch</span>
-                  <code className="kv-value">
-                    ~{(result.breakdown.basePenaltyPerEpoch * 1e6).toFixed(2)} microETH
-                  </code>
-                </div>
-                <div className="kv-item">
-                  <span className="kv-label">Hourly rewards</span>
-                  <code className="kv-value">
-                    ~{(result.breakdown.hourlyRewards * 1e6).toFixed(2)} microETH
-                  </code>
-                </div>
-                <div className="kv-item">
-                  <span className="kv-label">Total base penalty ({DEFAULT_DOWNTIME_HOURS}h)</span>
-                  <code className="kv-value">
-                    ~{(result.breakdown.totalBasePenalty * 1e6).toFixed(2)} microETH
-                  </code>
-                </div>
-                <div className="kv-item">
-                  <span className="kv-label">EIP-7716 penalty</span>
-                  <code className="kv-value">
-                    ~{(result.breakdown.totalEip7716Penalty * 1e6).toFixed(2)} microETH
-                  </code>
-                </div>
-              </div>
-            </div>
-
-            <p className="advanced-note">
-              <strong>Note:</strong> These calculations use simplified models for illustration.
-              Actual penalties depend on real-time network state, the <code>net_excess_penalties</code>{" "}
-              variable history, and consensus layer implementation details.
-              See <a href="https://eips.ethereum.org/EIPS/eip-7716" target="_blank" rel="noopener noreferrer">
-                EIP-7716
-              </a> for the full specification.
-            </p>
           </div>
         )}
       </div>
 
       <style>{`
         .penalty-results {
-          width: 100%;
-          max-width: 600px;
-          margin: 2rem auto;
+          margin-top: 2rem;
         }
 
-        .penalty-results h3 {
-          text-align: center;
-          color: var(--text-primary, #DFEAED);
-          margin-bottom: 0.25rem;
-          font-size: 1.25rem;
-        }
-
-        .downtime-note {
-          text-align: center;
-          color: var(--text-muted, #667A80);
-          font-size: 0.85rem;
-          margin-bottom: 1.5rem;
-        }
-
-        .result-grid {
+        .results-grid {
           display: grid;
-          gap: 1rem;
+          grid-template-columns: 1fr auto 1fr;
+          gap: 1.25rem;
+          align-items: stretch;
         }
 
-        .result-card {
+        .rule-card {
           background: var(--bg-card, #1A292D);
-          border-radius: 12px;
-          padding: 1.25rem;
-          text-align: center;
           border: 1px solid var(--border-color, #243D42);
+          border-radius: 12px;
+          padding: 1.4rem 1.5rem;
         }
 
-        .result-card.main-card {
-          padding: 1.5rem;
+        .rule-card.revised {
+          border-color: var(--border-color-light, #2D4D53);
+          background: linear-gradient(160deg, rgba(232, 158, 48, 0.06), var(--bg-card, #1A292D) 55%);
         }
 
-        .result-label {
-          font-size: 0.85rem;
-          color: var(--text-muted, #667A80);
+        .rule-label {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 0.5rem;
+          font-size: 0.75rem;
           text-transform: uppercase;
-          letter-spacing: 0.05em;
-          margin-bottom: 0.5rem;
+          letter-spacing: 0.09em;
+          color: var(--text-muted, #667A80);
+          margin-bottom: 0.7rem;
         }
 
-        .result-value {
-          font-size: 2.5rem;
-          font-weight: 700;
+        .factor-badge {
+          font-family: var(--font-mono);
+          font-size: 0.72rem;
+          font-weight: 600;
+          text-transform: none;
+          letter-spacing: 0;
+          padding: 0.1rem 0.45rem;
+          border: 1px solid;
+          border-radius: 999px;
+          white-space: nowrap;
+        }
+
+        .rule-usd {
+          font-family: var(--font-mono);
+          font-size: clamp(1.9rem, 4vw, 2.6rem);
+          font-weight: 600;
+          line-height: 1;
+          color: var(--text-primary, #DFEAED);
           font-variant-numeric: tabular-nums;
           transition: color 0.2s ease;
         }
 
-        .result-value.secondary {
-          font-size: 1.75rem;
-        }
-
-        .result-subtext {
+        .rule-eth {
+          font-family: var(--font-mono);
           font-size: 0.8rem;
           color: var(--text-muted, #667A80);
-          margin-top: 0.5rem;
-          line-height: 1.4;
+          margin-top: 0.4rem;
         }
 
-        .penalty-scale {
-          margin-top: 1.5rem;
-        }
-
-        .scale-bar {
-          position: relative;
-          height: 12px;
-          background: var(--bg-tertiary, #182D32);
-          border-radius: 6px;
-          overflow: visible;
-        }
-
-        .scale-fill {
-          height: 100%;
-          border-radius: 6px;
-          transition: width 0.3s ease, background-color 0.3s ease;
-        }
-
-        .scale-marker {
-          position: absolute;
-          top: 50%;
-          width: 20px;
-          height: 20px;
-          border-radius: 50%;
-          transform: translate(-50%, -50%);
-          border: 3px solid var(--bg-card, #1A292D);
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-          transition: left 0.3s ease, background-color 0.3s ease;
-        }
-
-        .scale-labels {
-          display: flex;
-          justify-content: space-between;
-          margin-top: 0.75rem;
-          font-size: 0.75rem;
+        .rule-payback {
+          margin-top: 0.85rem;
+          padding-top: 0.7rem;
+          border-top: 1px dashed var(--border-color, #243D42);
+          font-size: 0.78rem;
           color: var(--text-muted, #667A80);
-          padding: 0 0.25rem;
         }
 
-        .severity-banner {
-          margin-top: 1.5rem;
-          padding: 1rem 1.25rem;
-          background: var(--bg-secondary, #111F22);
-          border-radius: 8px;
-          border-left: 4px solid;
+        .rule-payback span {
+          font-family: var(--font-mono);
+          font-weight: 600;
+          color: var(--text-secondary, #9DBFC8);
+        }
+
+        .multiple-block {
           display: flex;
-          align-items: flex-start;
-          gap: 1rem;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          min-width: 6.5rem;
+          text-align: center;
         }
 
-        .severity-badge {
-          padding: 0.25rem 0.75rem;
-          border-radius: 4px;
-          font-size: 0.7rem;
+        .multiple-value {
+          font-family: var(--font-mono);
+          font-size: 2rem;
           font-weight: 700;
-          color: var(--bg-primary, #091011);
+          line-height: 1;
+          font-variant-numeric: tabular-nums;
+          transition: color 0.2s ease;
+        }
+
+        .multiple-label {
+          font-size: 0.68rem;
+          text-transform: uppercase;
+          letter-spacing: 0.08em;
+          color: var(--text-muted, #667A80);
+          margin-top: 0.3rem;
+        }
+
+        .multiple-arrow {
+          margin-top: 0.5rem;
+          opacity: 0.7;
+        }
+
+        .leak-split {
+          margin-top: 1.25rem;
+          padding: 1rem 1.25rem;
+          background: rgba(204, 51, 51, 0.06);
+          border: 1px solid rgba(204, 51, 51, 0.25);
+          border-radius: 10px;
+        }
+
+        .leak-split-header {
+          font-size: 0.82rem;
+          color: var(--text-secondary, #9DBFC8);
+          line-height: 1.5;
+          margin-bottom: 0.8rem;
+        }
+
+        .leak-split-header strong {
+          color: var(--red, #CC3333);
+        }
+
+        .leak-bar {
+          display: flex;
+          height: 2rem;
+          border-radius: 6px;
+          overflow: hidden;
+          font-family: var(--font-mono);
+          font-size: 0.68rem;
           white-space: nowrap;
         }
 
-        .severity-banner p {
-          margin: 0;
-          color: var(--text-secondary, #9DBFC8);
-          font-size: 0.9rem;
+        .leak-bar-eip,
+        .leak-bar-leak {
+          display: flex;
+          align-items: center;
+          padding: 0 0.6rem;
+          overflow: hidden;
+          min-width: 0;
+          transition: width 0.3s ease;
+        }
+
+        .leak-bar-eip {
+          background: rgba(232, 158, 48, 0.35);
+          color: var(--obol-gold, #E89E30);
+        }
+
+        .leak-bar-leak {
+          background: rgba(204, 51, 51, 0.35);
+          color: #E88;
+        }
+
+        .context-line {
+          margin-top: 1rem;
+          font-size: 0.72rem;
+          color: var(--text-muted, #667A80);
+          text-align: center;
           line-height: 1.5;
         }
 
-        /* Advanced Section */
         .advanced-section {
-          margin-top: 1.5rem;
+          margin-top: 1.25rem;
           border: 1px solid var(--border-color, #243D42);
-          border-radius: 8px;
+          border-radius: 10px;
           overflow: hidden;
         }
 
@@ -358,14 +396,14 @@ export function PenaltyResults({ offlinePercentage }: PenaltyResultsProps) {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          padding: 1rem 1.25rem;
+          padding: 0.85rem 1.15rem;
           background: var(--bg-secondary, #111F22);
           border: none;
           color: var(--text-secondary, #9DBFC8);
-          font-size: 0.9rem;
-          font-weight: 500;
+          font-size: 0.85rem;
+          font-weight: 600;
           cursor: pointer;
-          transition: background 0.2s ease, color 0.2s ease;
+          transition: background 0.2s ease;
         }
 
         .advanced-toggle:hover {
@@ -387,159 +425,82 @@ export function PenaltyResults({ offlinePercentage }: PenaltyResultsProps) {
           border-top: 1px solid var(--border-color, #243D42);
         }
 
-        .advanced-content h4 {
-          font-size: 0.95rem;
-          color: var(--text-primary, #DFEAED);
-          margin-bottom: 0.75rem;
-          margin-top: 1.25rem;
+        .breakdown-table {
+          width: 100%;
+          border-collapse: collapse;
+          font-size: 0.82rem;
         }
 
-        .advanced-content h4:first-child {
-          margin-top: 0;
+        .breakdown-table th {
+          text-align: left;
+          font-size: 0.68rem;
+          text-transform: uppercase;
+          letter-spacing: 0.07em;
+          color: var(--text-muted, #667A80);
+          padding: 0.4rem 0.5rem;
+          border-bottom: 1px solid var(--border-color, #243D42);
         }
 
-        .formula-section {
-          margin-bottom: 1.5rem;
-        }
-
-        .formula-code {
-          display: block;
-          background: var(--bg-secondary, #111F22);
-          padding: 0.75rem 1rem;
-          border-radius: 6px;
-          font-size: 0.8rem;
-          color: var(--obol-green, #2FE4AB);
-          overflow-x: auto;
+        .breakdown-table th:not(:first-child),
+        .breakdown-table td:not(:first-child) {
+          text-align: right;
+          font-family: var(--font-mono);
+          font-variant-numeric: tabular-nums;
           white-space: nowrap;
         }
 
-        .variables-grid {
-          margin-top: 1rem;
-          display: flex;
-          flex-direction: column;
-          gap: 0.5rem;
-        }
-
-        .variable-row {
-          display: grid;
-          grid-template-columns: 80px 100px 1fr;
-          gap: 0.75rem;
-          align-items: baseline;
-          font-size: 0.8rem;
-        }
-
-        .var-name {
-          color: var(--cyan, #3CD2DD);
-          font-weight: 500;
-        }
-
-        .var-value {
-          color: var(--text-primary, #DFEAED);
-          font-weight: 600;
-        }
-
-        .var-desc {
-          color: var(--text-muted, #667A80);
-        }
-
-        .calculation-section {
-          margin-bottom: 1.5rem;
-        }
-
-        .calculation-steps {
-          list-style: none;
-          padding: 0;
-          margin: 0;
-        }
-
-        .calculation-steps li {
-          padding: 0.5rem 0;
-          font-size: 0.8rem;
-          color: var(--text-secondary, #9DBFC8);
+        .breakdown-table td {
+          padding: 0.5rem;
           border-bottom: 1px solid var(--border-color, #243D42);
-          font-family: "SF Mono", "Fira Code", monospace;
+          color: var(--text-secondary, #9DBFC8);
+          vertical-align: top;
         }
 
-        .calculation-steps li:last-child {
-          border-bottom: none;
-        }
-
-        .key-values-section {
-          margin-bottom: 1rem;
-        }
-
-        .key-values-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-          gap: 0.75rem;
-        }
-
-        .kv-item {
-          display: flex;
-          flex-direction: column;
-          gap: 0.25rem;
-          padding: 0.75rem;
-          background: var(--bg-secondary, #111F22);
-          border-radius: 6px;
-        }
-
-        .kv-label {
+        .breakdown-table td em {
+          font-style: normal;
+          display: block;
           font-size: 0.7rem;
           color: var(--text-muted, #667A80);
-          text-transform: uppercase;
-          letter-spacing: 0.03em;
         }
 
-        .kv-value {
-          font-size: 0.85rem;
-          color: var(--obol-green, #2FE4AB);
-          font-weight: 500;
-        }
-
-        .advanced-note {
-          font-size: 0.8rem;
-          color: var(--text-muted, #667A80);
-          line-height: 1.5;
-          margin: 1rem 0 0;
-          padding: 0.75rem;
-          background: var(--bg-secondary, #111F22);
-          border-radius: 6px;
-          border-left: 3px solid var(--obol-green, #2FE4AB);
-        }
-
-        .advanced-note strong {
+        .breakdown-table .total-row td {
+          border-bottom: none;
+          font-weight: 700;
           color: var(--text-primary, #DFEAED);
         }
 
-        .advanced-note code {
-          background: var(--bg-tertiary, #182D32);
-          padding: 0.1rem 0.3rem;
-          border-radius: 3px;
-          font-size: 0.75rem;
+        .model-notes {
+          margin-top: 1rem;
+          font-size: 0.76rem;
+          color: var(--text-muted, #667A80);
+          line-height: 1.6;
         }
 
-        .advanced-note a {
+        .model-notes p {
+          margin-bottom: 0.6rem;
+        }
+
+        .model-notes code {
+          font-size: 0.72rem;
           color: var(--obol-green, #2FE4AB);
         }
 
-        @media (min-width: 640px) {
-          .result-grid {
-            grid-template-columns: 1fr 1fr;
-          }
-
-          .result-card.main-card {
-            grid-column: 1 / -1;
-          }
-        }
-
-        @media (max-width: 640px) {
-          .variable-row {
+        @media (max-width: 720px) {
+          .results-grid {
             grid-template-columns: 1fr;
-            gap: 0.25rem;
+            gap: 0.75rem;
           }
 
-          .key-values-grid {
-            grid-template-columns: 1fr;
+          .multiple-block {
+            flex-direction: row;
+            gap: 0.6rem;
+            min-width: 0;
+          }
+
+          .multiple-arrow {
+            margin-top: 0;
+            transform: rotate(90deg);
+            width: 26px;
           }
         }
       `}</style>

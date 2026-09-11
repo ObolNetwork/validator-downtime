@@ -25,25 +25,32 @@ export function Footer() {
             <div className="link-group">
               <h4>Resources</h4>
               <a
-                href="https://eips.ethereum.org/EIPS/eip-7716"
+                href="https://github.com/ethereum/EIPs/pull/11962"
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                EIP-7716 Specification
+                EIP-7716 (revision PR)
               </a>
               <a
-                href="https://ethresear.ch/t/diseconomies-of-scale-anti-correlation-penalties-eip-7716/20114"
+                href="https://ethresear.ch/t/supporting-decentralized-staking-through-more-anti-correlation-incentives/19116/18"
                 target="_blank"
                 rel="noopener noreferrer"
               >
                 Research Post
               </a>
               <a
-                href="https://ethereum.org/en/roadmap/"
+                href="https://github.com/OisinKyne/7716"
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                Ethereum Roadmap
+                Backtests &amp; Figures
+              </a>
+              <a
+                href="https://github.com/ethereum/consensus-specs/pull/5452"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                consensus-specs PR
               </a>
             </div>
 
@@ -76,8 +83,9 @@ export function Footer() {
 
         <div className="footer-bottom">
           <p>
-            This calculator provides estimates based on the EIP-7716 specification.
-            Actual penalties may vary based on network conditions and implementation details.
+            This calculator provides estimates for a draft EIP under discussion for the
+            Hegotá fork. Actual penalties may vary based on network conditions and
+            implementation details.
           </p>
           <p className="copyright">
             © {new Date().getFullYear()} Obol Network. Open source under MIT license.
