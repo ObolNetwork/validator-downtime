@@ -304,14 +304,14 @@ export function CorrelationSlider({ value, onChange }: CorrelationSliderProps) {
         }
 
         .chip:hover {
-          border-color: var(--obol-green, #2FE4AB);
+          border-color: var(--accent, #2FE4AB);
           color: var(--text-primary, #DFEAED);
         }
 
         .chip.active {
-          border-color: var(--obol-green, #2FE4AB);
+          border-color: var(--accent, #2FE4AB);
           background: rgba(47, 228, 171, 0.1);
-          color: var(--obol-green, #2FE4AB);
+          color: var(--accent, #2FE4AB);
         }
 
         .chip em {

@@ -209,8 +209,8 @@ const IndexPage: React.FC<PageProps> = () => {
               <div className="explainer-icon">🧩</div>
               <h3>Why: decentralization pays</h3>
               <p>
-                Diverse clients, infrastructure, geographies and distributed validators
-                (DVT) rarely fail together, so they rarely see a factor above 1×. Concentrated
+                Diverse setups — different clients, infrastructure, and geographies —
+                rarely fail together, so they rarely see a factor above 1×. Concentrated
                 setups carry correlated risk that today is priced at zero — this EIP prices it.
               </p>
             </div>
@@ -319,13 +319,14 @@ const IndexPage: React.FC<PageProps> = () => {
             </details>
 
             <details className="faq-item">
-              <summary>How does Obol help with this?</summary>
+              <summary>How do operators avoid correlated penalties?</summary>
               <p>
-                Obol&rsquo;s Distributed Validator Technology (DVT) splits each validator
-                across independent operators, clients, and locations. When one node fails, the
-                cluster keeps attesting — so a DVT validator rarely joins a correlated cohort
-                at all, and the factor above 1× rarely applies. Under a mechanism that prices
-                correlation, engineering correlation away is the direct hedge.
+                By failing alone, not together: run a minority client, avoid the most
+                crowded cloud providers and regions, and stagger upgrades rather than
+                rolling a whole fleet at once. Splitting a validator across independent
+                nodes (distributed validators) is another option — if part of the cluster
+                fails, the rest keeps attesting. Under a mechanism that prices correlation,
+                anything that de-correlates your failures is the direct hedge.
               </p>
             </details>
           </div>
@@ -359,7 +360,7 @@ const IndexPage: React.FC<PageProps> = () => {
           font-size: 0.72rem;
           letter-spacing: 0.14em;
           text-transform: uppercase;
-          color: var(--obol-green, #2FE4AB);
+          color: var(--accent, #2FE4AB);
           margin-bottom: 1.1rem;
         }
 
@@ -372,7 +373,7 @@ const IndexPage: React.FC<PageProps> = () => {
         }
 
         .hero-accent {
-          background: linear-gradient(90deg, var(--obol-green, #2FE4AB), var(--cyan, #3CD2DD));
+          background: linear-gradient(90deg, var(--accent, #2FE4AB), var(--cyan, #3CD2DD));
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
           background-clip: text;
@@ -414,12 +415,12 @@ const IndexPage: React.FC<PageProps> = () => {
           font-family: var(--font-mono);
           font-size: 1.5rem;
           font-weight: 700;
-          color: var(--obol-green, #2FE4AB);
+          color: var(--accent, #2FE4AB);
           line-height: 1;
         }
 
         .hero-stat:nth-child(2) .stat-value {
-          color: var(--obol-gold, #E89E30);
+          color: var(--accent-gold, #E89E30);
         }
 
         .hero-stat:nth-child(3) .stat-value {
@@ -472,7 +473,7 @@ const IndexPage: React.FC<PageProps> = () => {
 
         .section-lede code {
           font-size: 0.8rem;
-          color: var(--obol-green, #2FE4AB);
+          color: var(--accent, #2FE4AB);
         }
 
         .fairness-grid {
@@ -494,7 +495,7 @@ const IndexPage: React.FC<PageProps> = () => {
           font-family: var(--font-mono);
           font-size: 1.45rem;
           font-weight: 700;
-          color: var(--obol-gold, #E89E30);
+          color: var(--accent-gold, #E89E30);
           margin-bottom: 0.7rem;
           letter-spacing: -0.02em;
         }
@@ -621,7 +622,7 @@ const IndexPage: React.FC<PageProps> = () => {
           margin: 2.5rem auto 0;
           padding: 1rem 1.25rem;
           background: var(--bg-card, #1A292D);
-          border-left: 3px solid var(--obol-gold, #E89E30);
+          border-left: 3px solid var(--accent-gold, #E89E30);
           border-radius: 0 8px 8px 0;
           font-size: 0.78rem;
           color: var(--text-muted, #667A80);
@@ -652,7 +653,7 @@ export default IndexPage;
 
 export const Head: HeadFC = () => (
   <>
-    <title>EIP-7716 Validator Downtime Calculator | Obol Network</title>
+    <title>EIP-7716 Validator Downtime Calculator</title>
     <meta
       name="description"
       content="Interactive calculator for the revised EIP-7716 anti-correlation penalties: what a correlated outage costs, how front-loading works, and how many days of rewards it takes to recover."

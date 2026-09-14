@@ -368,7 +368,7 @@ export function PenaltyResults({
 
         .leak-bar-eip {
           background: rgba(232, 158, 48, 0.35);
-          color: var(--obol-gold, #E89E30);
+          color: var(--accent-gold, #E89E30);
         }
 
         .leak-bar-leak {
@@ -482,7 +482,7 @@ export function PenaltyResults({
 
         .model-notes code {
           font-size: 0.72rem;
-          color: var(--obol-green, #2FE4AB);
+          color: var(--accent, #2FE4AB);
         }
 
         @media (max-width: 720px) {

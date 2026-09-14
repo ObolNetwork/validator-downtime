@@ -264,7 +264,7 @@ export function DowntimeControls({
         }
 
         .stake-input-wrap:focus-within {
-          border-color: var(--obol-green, #2FE4AB);
+          border-color: var(--accent, #2FE4AB);
         }
 
         .stake-input-wrap input {

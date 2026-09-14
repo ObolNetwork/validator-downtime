@@ -142,7 +142,7 @@ export function EventPresets({ onLoad }: EventPresetsProps) {
         }
 
         .preset-card:hover {
-          border-color: var(--obol-green, #2FE4AB);
+          border-color: var(--accent, #2FE4AB);
           transform: translateY(-2px);
         }
 
@@ -173,7 +173,7 @@ export function EventPresets({ onLoad }: EventPresetsProps) {
           font-family: var(--font-mono);
           font-size: 1.5rem;
           font-weight: 600;
-          color: var(--obol-gold, #E89E30);
+          color: var(--accent-gold, #E89E30);
         }
 
         .peak-label {
@@ -220,7 +220,7 @@ export function EventPresets({ onLoad }: EventPresetsProps) {
         }
 
         .pb-value.revised {
-          color: var(--obol-gold, #E89E30);
+          color: var(--accent-gold, #E89E30);
         }
 
         .pb-mult {
@@ -242,7 +242,7 @@ export function EventPresets({ onLoad }: EventPresetsProps) {
         .preset-cta {
           font-size: 0.72rem;
           font-weight: 600;
-          color: var(--obol-green, #2FE4AB);
+          color: var(--accent, #2FE4AB);
         }
 
         .presets-note {

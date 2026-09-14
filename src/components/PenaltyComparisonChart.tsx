@@ -358,7 +358,7 @@ export function PenaltyComparisonChart({
 
         .view-toggle button.active {
           background: var(--bg-card-hover, #243D42);
-          color: var(--obol-green, #2FE4AB);
+          color: var(--accent, #2FE4AB);
         }
 
         .chart-svg {

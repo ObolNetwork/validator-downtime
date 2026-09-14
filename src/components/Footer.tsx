@@ -7,23 +7,24 @@ export function Footer() {
         <div className="footer-main">
           <div className="footer-branding">
             <p className="footer-credit">
-              Built by{" "}
+              Built and maintained by contributors at{" "}
               <a
                 href="https://obol.org"
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                Obol Network
+                Obol
               </a>
+              .
             </p>
             <p className="footer-tagline">
-              Securing and Powering the Ethereum Economy
+              Deliberately neutral: the model follows the EIP as proposed.
             </p>
           </div>
 
           <div className="footer-links">
             <div className="link-group">
-              <h4>Resources</h4>
+              <h4>The proposal</h4>
               <a
                 href="https://github.com/ethereum/EIPs/pull/11962"
                 target="_blank"
@@ -53,31 +54,6 @@ export function Footer() {
                 consensus-specs PR
               </a>
             </div>
-
-            <div className="link-group">
-              <h4>Obol</h4>
-              <a
-                href="https://obol.org"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Website
-              </a>
-              <a
-                href="https://docs.obol.tech"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Documentation
-              </a>
-              <a
-                href="https://github.com/ObolNetwork"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                GitHub
-              </a>
-            </div>
           </div>
         </div>
 
@@ -88,7 +64,7 @@ export function Footer() {
             implementation details.
           </p>
           <p className="copyright">
-            © {new Date().getFullYear()} Obol Network. Open source under MIT license.
+            Open source under MIT license.
           </p>
         </div>
       </div>
@@ -115,23 +91,24 @@ export function Footer() {
         }
 
         .footer-branding {
-          max-width: 300px;
+          max-width: 340px;
         }
 
         .footer-credit {
-          font-size: 1rem;
-          color: var(--text-primary, #DFEAED);
+          font-size: 0.9rem;
+          color: var(--text-secondary, #9DBFC8);
           margin: 0 0 0.5rem 0;
         }
 
         .footer-credit a {
-          color: var(--obol-green, #2FE4AB);
-          text-decoration: none;
-          font-weight: 600;
+          color: var(--text-secondary, #9DBFC8);
+          text-decoration: underline;
+          text-decoration-color: var(--text-muted, #667A80);
+          font-weight: 500;
         }
 
         .footer-credit a:hover {
-          text-decoration: underline;
+          color: var(--accent, #2FE4AB);
         }
 
         .footer-tagline {
@@ -163,7 +140,7 @@ export function Footer() {
         }
 
         .link-group a:hover {
-          color: var(--obol-green, #2FE4AB);
+          color: var(--accent, #2FE4AB);
         }
 
         .footer-bottom {
@@ -185,17 +162,6 @@ export function Footer() {
         @media (max-width: 768px) {
           .footer-main {
             flex-direction: column;
-          }
-
-          .footer-links {
-            gap: 2rem;
-          }
-        }
-
-        @media (max-width: 480px) {
-          .footer-links {
-            flex-direction: column;
-            gap: 1.5rem;
           }
         }
       `}</style>
