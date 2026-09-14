@@ -656,7 +656,7 @@ export const Head: HeadFC = () => (
     <title>EIP-7716 Validator Downtime Calculator</title>
     <meta
       name="description"
-      content="Interactive calculator for the revised EIP-7716 anti-correlation penalties: what a correlated outage costs, how front-loading works, and how many days of rewards it takes to recover."
+      content="What are the increased penalties for going offline with other validators, and what can you do to protect your ETH stake from them?"
     />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -668,16 +668,25 @@ export const Head: HeadFC = () => (
     <meta property="og:title" content="EIP-7716 Validator Downtime Calculator" />
     <meta
       property="og:description"
-      content="What does correlated downtime cost under the revised EIP-7716? Front-loaded penalties, real-event replays, and days-to-recover — interactively."
+      content="What are the increased penalties for going offline with other validators, and what can you do to protect your ETH stake from them?"
     />
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://validatordowntime.obol.org" />
+    <meta property="og:site_name" content="EIP-7716 Validator Downtime Calculator" />
+    <meta property="og:url" content="https://validatordowntime.obol.org/" />
+    <meta property="og:image" content="https://validatordowntime.obol.org/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta
+      property="og:image:alt"
+      content="Chart: during a 10% correlated outage, penalties are ~78x in the first hours, then return to 1x once the crowd recovers."
+    />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="EIP-7716 Validator Downtime Calculator" />
     <meta
       name="twitter:description"
-      content="What does correlated downtime cost under the revised EIP-7716? Interactive penalties, real-event replays, days-to-recover."
+      content="What are the increased penalties for going offline with other validators, and what can you do to protect your ETH stake from them?"
     />
-    <link rel="canonical" href="https://validatordowntime.obol.org" />
+    <meta name="twitter:image" content="https://validatordowntime.obol.org/og-image.png" />
+    <link rel="canonical" href="https://validatordowntime.obol.org/" />
   </>
 );
