@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import type { HeadFC, PageProps } from "gatsby";
 import "../styles/global.css";
 import {
@@ -15,14 +15,76 @@ import {
   DEFAULT_EVENT_PERCENT,
   DEFAULT_COHORT_HOURS,
   DEFAULT_VALIDATOR_HOURS,
+  MAX_EVENT_PERCENT,
+  MAX_HOURS,
+  DEFAULT_ECONOMICS,
 } from "../lib/constants";
+import { onsetFactor, formatFactor } from "../lib/penaltyCalculator";
+
+/** Calculator state ⇄ shareable query string (?event=10&cohort=6&you=24&stake=32&price=2450). */
+const PARAM_DEFAULTS = {
+  event: DEFAULT_EVENT_PERCENT,
+  cohort: DEFAULT_COHORT_HOURS,
+  you: DEFAULT_VALIDATOR_HOURS,
+  stake: 32,
+  price: DEFAULT_ECONOMICS.ethPriceUsd,
+};
+
+function readParam(params: URLSearchParams, key: string, lo: number, hi: number, fallback: number): number {
+  const raw = params.get(key);
+  if (raw === null) return fallback;
+  const v = parseFloat(raw);
+  return Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : fallback;
+}
 
 const IndexPage: React.FC<PageProps> = () => {
   const [eventPercent, setEventPercent] = useState<number>(DEFAULT_EVENT_PERCENT);
   const [cohortHours, setCohortHours] = useState<number>(DEFAULT_COHORT_HOURS);
   const [validatorHours, setValidatorHours] = useState<number>(DEFAULT_VALIDATOR_HOURS);
   const [stakeEth, setStakeEth] = useState<number>(32);
+  const [ethPriceUsd, setEthPriceUsd] = useState<number>(DEFAULT_ECONOMICS.ethPriceUsd);
+  const [copied, setCopied] = useState<boolean>(false);
+  const hydratedFromUrl = useRef(false);
   const calculatorRef = useRef<HTMLDivElement>(null);
+
+  // Load shared settings from the URL once, on mount (static site — the URL is the backend).
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    setEventPercent(readParam(params, "event", 0, MAX_EVENT_PERCENT, DEFAULT_EVENT_PERCENT));
+    setCohortHours(readParam(params, "cohort", 0.5, MAX_HOURS, DEFAULT_COHORT_HOURS));
+    setValidatorHours(readParam(params, "you", 0.5, MAX_HOURS, DEFAULT_VALIDATOR_HOURS));
+    setStakeEth(readParam(params, "stake", 1, 10_000_000, 32));
+    setEthPriceUsd(readParam(params, "price", 1, 1_000_000, DEFAULT_ECONOMICS.ethPriceUsd));
+    hydratedFromUrl.current = true;
+  }, []);
+
+  // Keep the URL in sync so the current view is always copy-shareable.
+  useEffect(() => {
+    if (!hydratedFromUrl.current) return;
+    const values: Record<string, number> = {
+      event: eventPercent,
+      cohort: cohortHours,
+      you: validatorHours,
+      stake: stakeEth,
+      price: ethPriceUsd,
+    };
+    const params = new URLSearchParams();
+    for (const [key, v] of Object.entries(values)) {
+      if (v !== PARAM_DEFAULTS[key as keyof typeof PARAM_DEFAULTS]) params.set(key, String(v));
+    }
+    const qs = params.toString();
+    window.history.replaceState(null, "", qs ? `?${qs}` : window.location.pathname);
+  }, [eventPercent, cohortHours, validatorHours, stakeEth, ethPriceUsd]);
+
+  const copyShareLink = () => {
+    navigator.clipboard
+      .writeText(window.location.href)
+      .then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      })
+      .catch(() => {});
+  };
 
   const loadPreset = (load: {
     eventPercent: number;
@@ -49,8 +111,10 @@ const IndexPage: React.FC<PageProps> = () => {
           </h1>
           <p className="hero-subtitle">
             Ethereum punishes correlated slashing. In 2027, it will punish correlated downtime
-            too. Fail alone and you pay exactly today&rsquo;s rates. Fail alongside 10% of the
-            network and the first hours get expensive — fast.
+            too. Fail alone and you pay exactly today&rsquo;s rates. Fail alongside{" "}
+            <strong>{eventPercent}%</strong> of the network and the first hours are charged at{" "}
+            <strong>~{formatFactor(onsetFactor(eventPercent / 100))}</strong> — drag the slider
+            below to see it move.
           </p>
           <div className="hero-stats">
             <div className="hero-stat">
@@ -77,23 +141,35 @@ const IndexPage: React.FC<PageProps> = () => {
               cohortHours={cohortHours}
               validatorHours={validatorHours}
               stakeEth={stakeEth}
+              ethPriceUsd={ethPriceUsd}
               onCohortChange={setCohortHours}
               onValidatorChange={setValidatorHours}
               onStakeChange={setStakeEth}
+              onEthPriceChange={setEthPriceUsd}
             />
             <PenaltyResults
               eventPercent={eventPercent}
               cohortHours={cohortHours}
               validatorHours={validatorHours}
               stakeEth={stakeEth}
+              ethPriceUsd={ethPriceUsd}
             />
             <PenaltyComparisonChart
               eventPercent={eventPercent}
               cohortHours={cohortHours}
               validatorHours={validatorHours}
               stakeEth={stakeEth}
+              ethPriceUsd={ethPriceUsd}
             />
             <EventPresets onLoad={loadPreset} />
+            <div className="share-row">
+              <button type="button" className="share-button" onClick={copyShareLink}>
+                {copied ? "Link copied ✓" : "🔗 Copy a link to these settings"}
+              </button>
+              <span className="share-hint">
+                The URL tracks your inputs — share it and others see exactly this scenario.
+              </span>
+            </div>
           </div>
         </div>
       </section>
@@ -280,6 +356,22 @@ const IndexPage: React.FC<PageProps> = () => {
             </details>
 
             <details className="faq-item">
+              <summary>Does the normal background offline rate change these numbers?</summary>
+              <p>
+                No — and that&rsquo;s by design, not by omission. Around 0.3% of stake is
+                offline at any given moment in normal operation, and the mechanism&rsquo;s
+                moving average sits at that level in steady state. An event is measured as
+                the <em>excess</em> above it: with a 0.3% baseline and a 10% outage, the
+                offline share is 10.3%, the reference is 0.3%, and the factor prices exactly
+                the 10% spike. This calculator models it that way explicitly (see{" "}
+                <code>BASELINE_OFFLINE_FRACTION</code> in the source), and every number is
+                identical to a zero-baseline assumption because the slope is normalized by
+                total stake, not by the moving average — a design chosen precisely so the
+                curve doesn&rsquo;t drift as network participation changes.
+              </p>
+            </details>
+
+            <details className="faq-item">
               <summary>Where do the extra penalties go?</summary>
               <p>
                 They&rsquo;re burned, like all attestation penalties today — not redistributed
@@ -445,6 +537,38 @@ const IndexPage: React.FC<PageProps> = () => {
           padding: 2.25rem;
           max-width: 860px;
           margin: 0 auto;
+        }
+
+        .share-row {
+          display: flex;
+          align-items: center;
+          gap: 0.9rem;
+          flex-wrap: wrap;
+          margin-top: 1.75rem;
+          padding-top: 1.5rem;
+          border-top: 1px solid var(--border-color, #243D42);
+        }
+
+        .share-button {
+          padding: 0.5rem 1rem;
+          font-size: 0.82rem;
+          font-weight: 600;
+          background: var(--bg-tertiary, #182D32);
+          border: 1px solid var(--border-color, #243D42);
+          border-radius: 8px;
+          color: var(--accent, #2FE4AB);
+          cursor: pointer;
+          transition: background 0.15s ease, border-color 0.15s ease;
+        }
+
+        .share-button:hover {
+          background: var(--bg-card-hover, #243D42);
+          border-color: var(--accent, #2FE4AB);
+        }
+
+        .share-hint {
+          font-size: 0.75rem;
+          color: var(--text-muted, #667A80);
         }
 
         .fairness-section {
@@ -659,6 +783,9 @@ export const Head: HeadFC = () => (
       content="What are the increased penalties for going offline with other validators, and what can you do to protect your ETH stake from them?"
     />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
     <link

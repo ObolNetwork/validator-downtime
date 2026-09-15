@@ -19,6 +19,7 @@ interface PenaltyResultsProps {
   cohortHours: number;
   validatorHours: number;
   stakeEth: number;
+  ethPriceUsd?: number;
 }
 
 export function PenaltyResults({
@@ -26,9 +27,10 @@ export function PenaltyResults({
   cohortHours,
   validatorHours,
   stakeEth,
+  ethPriceUsd,
 }: PenaltyResultsProps) {
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const econ = DEFAULT_ECONOMICS;
+  const econ = { ...DEFAULT_ECONOMICS, ethPriceUsd: ethPriceUsd ?? DEFAULT_ECONOMICS.ethPriceUsd };
 
   const r = calculateOutage(
     {

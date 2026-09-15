@@ -94,6 +94,16 @@ export const CURRENT_ECONOMICS: EconomicsSnapshot = {
 
 export const DEFAULT_ECONOMICS = CURRENT_ECONOMICS;
 
+/**
+ * Share of stake offline in normal operation (~99.7% 30-day network uptime).
+ * The mechanism's moving average sits at this level in steady state, so an
+ * event's excess is measured on top of it. By design the baseline cancels
+ * out of every penalty factor (the slope is normalized by active balance,
+ * not by the moving average) — this constant exists so the model states its
+ * assumption explicitly rather than implying a 0% baseline.
+ */
+export const BASELINE_OFFLINE_FRACTION = 0.003;
+
 // ── Calculator input defaults / bounds ──────────────────────────────────────
 
 export const DEFAULT_EVENT_PERCENT = 10; // % of stake offline together

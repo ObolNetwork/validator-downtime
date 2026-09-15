@@ -40,7 +40,7 @@ export function CorrelationSlider({ value, onChange }: CorrelationSliderProps) {
       <div className="slider-header">
         <div>
           <label htmlFor="event-range">Stake offline with you</label>
-          <span className="sub-label">share of the whole network failing together</span>
+          <span className="sub-label">share of the network newly failing together, on top of the ~0.3% offline in normal times</span>
         </div>
         <div className="readout">
           <span className="readout-pct" style={{ color }}>

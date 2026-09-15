@@ -27,6 +27,7 @@ import {
   GWEI_PER_ETH,
   INACTIVITY_LEAK_QUOTIENT,
   DEFAULT_ECONOMICS,
+  BASELINE_OFFLINE_FRACTION,
   type EconomicsSnapshot,
 } from "./constants";
 
@@ -92,13 +93,28 @@ export interface OutageResult {
 // ── Core pieces ─────────────────────────────────────────────────────────────
 
 /**
- * Onset penalty factor for a cohort of `eventFraction` of stake going down
- * against a calm baseline: min(1 + 765·x, 256). Never below 1 — uncorrelated
- * failures pay exactly today's penalties.
+ * Onset penalty factor for a cohort of `eventFraction` of stake newly going
+ * down on top of the normal offline baseline. Computed in the spec's own
+ * form — offline balance vs the smoothed moving average — with the moving
+ * average warmed at the realistic ~0.3% baseline rather than assuming a
+ * perfectly-online network:
+ *
+ *   offline  = BASELINE_OFFLINE_FRACTION + eventFraction
+ *   smoothed = BASELINE_OFFLINE_FRACTION
+ *   excess   = offline − min(offline, smoothed)  ( = eventFraction )
+ *
+ * The baseline cancels exactly, for any baseline value: the slope is
+ * normalized by total active balance, not by the moving average, so the
+ * factor depends only on the size of the anomaly. (An average-relative
+ * slope would NOT have this property — it was evaluated and rejected for
+ * exactly that reason.) Never below 1: uncorrelated failures pay exactly
+ * today's penalties.
  */
 export function onsetFactor(eventFraction: number): number {
-  const x = Math.max(0, eventFraction);
-  return Math.min(1 + PENALTY_SLOPE * x, MAX_PENALTY_FACTOR);
+  const offline = BASELINE_OFFLINE_FRACTION + Math.max(0, eventFraction);
+  const smoothed = BASELINE_OFFLINE_FRACTION;
+  const excess = offline - Math.min(offline, smoothed);
+  return Math.min(1 + PENALTY_SLOPE * excess, MAX_PENALTY_FACTOR);
 }
 
 /**

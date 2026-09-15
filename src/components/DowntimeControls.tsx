@@ -8,9 +8,11 @@ interface DowntimeControlsProps {
   cohortHours: number;
   validatorHours: number;
   stakeEth: number;
+  ethPriceUsd: number;
   onCohortChange: (hours: number) => void;
   onValidatorChange: (hours: number) => void;
   onStakeChange: (eth: number) => void;
+  onEthPriceChange: (usd: number) => void;
 }
 
 function nearestStopIndex(hours: number): number {
@@ -81,9 +83,11 @@ export function DowntimeControls({
   cohortHours,
   validatorHours,
   stakeEth,
+  ethPriceUsd,
   onCohortChange,
   onValidatorChange,
   onStakeChange,
+  onEthPriceChange,
 }: DowntimeControlsProps) {
   const relation =
     validatorHours < cohortHours
@@ -138,6 +142,23 @@ export function DowntimeControls({
           <span className="stake-unit">ETH</span>
         </div>
         <span className="stake-hint">≈ {Math.max(1, Math.round(stakeEth / 32))} × 32-ETH validators</span>
+
+        <label htmlFor="eth-price-input" className="price-label">ETH price</label>
+        <div className="stake-input-wrap">
+          <span className="stake-unit">$</span>
+          <input
+            id="eth-price-input"
+            type="number"
+            min={1}
+            step={50}
+            value={ethPriceUsd}
+            onChange={(e) => {
+              const v = parseFloat(e.target.value);
+              if (!Number.isNaN(v) && v > 0) onEthPriceChange(v);
+            }}
+            aria-label="ETH price assumption in US dollars"
+          />
+        </div>
       </div>
 
       <style>{`
@@ -292,6 +313,16 @@ export function DowntimeControls({
         .stake-hint {
           font-size: 0.75rem;
           color: var(--text-muted, #667A80);
+        }
+
+        .price-label {
+          margin-left: 0.75rem;
+        }
+
+        @media (max-width: 640px) {
+          .price-label {
+            margin-left: 0;
+          }
         }
 
         @media (max-width: 640px) {

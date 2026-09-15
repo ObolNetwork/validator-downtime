@@ -14,9 +14,10 @@ interface PenaltyComparisonChartProps {
   cohortHours: number;
   validatorHours: number;
   stakeEth: number;
+  ethPriceUsd?: number;
 }
 
-type View = "cost" | "multiple";
+type View = "cost" | "marginal" | "multiple";
 
 const W = 760;
 const H = 400;
@@ -45,11 +46,15 @@ export function PenaltyComparisonChart({
   cohortHours,
   validatorHours,
   stakeEth,
+  ethPriceUsd,
 }: PenaltyComparisonChartProps) {
   const [view, setView] = useState<View>("multiple");
   const [hover, setHover] = useState<CostCurvePoint | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
-  const econ = DEFAULT_ECONOMICS;
+  const econ = useMemo(
+    () => ({ ...DEFAULT_ECONOMICS, ethPriceUsd: ethPriceUsd ?? DEFAULT_ECONOMICS.ethPriceUsd }),
+    [ethPriceUsd]
+  );
 
   const points = useMemo(
     () => costCurve(eventPercent / 100, cohortHours, stakeEth, MAX_HOURS, econ),
@@ -70,10 +75,34 @@ export function PenaltyComparisonChart({
     [eventPercent, cohortHours, validatorHours, stakeEth, econ]
   );
 
+  // per-hour rate of the cost curves (finite difference): the "marginal" view
+  const marginal = useMemo(() => {
+    const out: Array<{ hoursDown: number; revisedPerHour: number; todayPerHour: number }> = [];
+    for (let i = 1; i < points.length; i++) {
+      const dh = points[i].hoursDown - points[i - 1].hoursDown;
+      out.push({
+        hoursDown: points[i].hoursDown,
+        revisedPerHour: (points[i].revisedUsd - points[i - 1].revisedUsd) / dh,
+        todayPerHour: (points[i].todayUsd - points[i - 1].todayUsd) / dh,
+      });
+    }
+    return out;
+  }, [points]);
+  const todayRate = marginal.length ? marginal[0].todayPerHour : 0;
+  const marginalAt = (hours: number) => {
+    let best = marginal[0];
+    for (const m of marginal) {
+      if (Math.abs(m.hoursDown - hours) < Math.abs(best.hoursDown - hours)) best = m;
+    }
+    return best;
+  };
+
   const yMax =
     view === "cost"
       ? Math.max(...points.map((p) => p.revisedUsd), 1) * 1.06
-      : Math.max(...points.map((p) => p.multiple), 2) * 1.08;
+      : view === "marginal"
+        ? Math.max(...marginal.map((m) => m.revisedPerHour), todayRate * 2, 0.01) * 1.08
+        : Math.max(...points.map((p) => p.multiple), 2) * 1.08;
 
   const x = (hours: number) => M.left + (hours / MAX_HOURS) * PLOT_W;
   const y = (v: number) => M.top + PLOT_H - (Math.min(v, yMax) / yMax) * PLOT_H;
@@ -105,12 +134,16 @@ export function PenaltyComparisonChart({
           <h3>
             {view === "cost"
               ? "The charge is front-loaded"
-              : "The multiple falls as recovery stretches"}
+              : view === "marginal"
+                ? "Each extra hour, priced"
+                : "The multiple falls as recovery stretches"}
           </h3>
           <p className="chart-sub">
             {view === "cost"
               ? "Today, cost is proportional to how long you're down. Revised, most of the bill lands in the first hours — the tail is nearly flat once the cohort recovers."
-              : "Fast responders bear the deterrent; stragglers converge back toward today's rules. Bigger nominal bill, smaller relative one."}
+              : view === "marginal"
+                ? "What one more hour offline costs. Elevated while the correlated group is down, then back to roughly today's per-hour rate the moment it recovers."
+                : "Fast responders bear the deterrent; stragglers converge back toward today's rules. Bigger nominal bill, smaller relative one."}
           </p>
         </div>
         <div className="view-toggle" role="tablist" aria-label="Chart view">
@@ -121,6 +154,14 @@ export function PenaltyComparisonChart({
             onClick={() => setView("cost")}
           >
             Cost
+          </button>
+          <button
+            role="tab"
+            aria-selected={view === "marginal"}
+            className={view === "marginal" ? "active" : ""}
+            onClick={() => setView("marginal")}
+          >
+            Marginal
           </button>
           <button
             role="tab"
@@ -143,7 +184,9 @@ export function PenaltyComparisonChart({
         aria-label={
           view === "cost"
             ? `Loss versus hours offline for a ${eventPercent}% event. At your ${formatHours(validatorHours)}: ${formatUsd(you.todayLossUsd)} under today's rules, ${formatUsd(you.revisedLossUsd)} revised.`
-            : `Cost multiple versus today's rules, falling as downtime lengthens. At your ${formatHours(validatorHours)}: ${you.multiple.toFixed(1)} times.`
+            : view === "marginal"
+              ? `Cost of each additional hour offline: elevated while the cohort is down, back to about ${formatUsd(todayRate)} per hour once it recovers.`
+              : `Cost multiple versus today's rules, falling as downtime lengthens. At your ${formatHours(validatorHours)}: ${you.multiple.toFixed(1)} times.`
         }
       >
         <defs>
@@ -166,7 +209,7 @@ export function PenaltyComparisonChart({
               strokeDasharray={t === 0 ? "" : "2 4"}
             />
             <text x={M.left - 8} y={y(t) + 4} textAnchor="end" className="tick-label">
-              {view === "cost" ? formatUsd(t) : `${t}×`}
+              {view === "cost" ? formatUsd(t) : view === "marginal" ? `${formatUsd(t)}/h` : `${t}×`}
             </text>
           </g>
         ))}
@@ -205,7 +248,46 @@ export function PenaltyComparisonChart({
           </g>
         )}
 
-        {view === "cost" ? (
+        {view === "marginal" ? (
+          <>
+            <path
+              d={
+                marginal
+                  .map((m, i) => `${i === 0 ? "M" : "L"}${x(m.hoursDown).toFixed(1)},${y(m.revisedPerHour).toFixed(1)}`)
+                  .join(" ") + ` L${x(MAX_HOURS)},${y(0)} L${x(marginal[0]?.hoursDown ?? 0)},${y(0)} Z`
+              }
+              fill="url(#revisedFill)"
+            />
+            <line
+              x1={M.left}
+              x2={W - M.right}
+              y1={y(todayRate)}
+              y2={y(todayRate)}
+              stroke={COLOR_TODAY}
+              strokeWidth="1.5"
+              strokeDasharray="6 5"
+            />
+            <text x={W - M.right - 4} y={y(todayRate) - 6} textAnchor="end" className="marker-label" fill={COLOR_TODAY}>
+              today&rsquo;s per-hour rate
+            </text>
+            <path
+              d={marginal
+                .map((m, i) => `${i === 0 ? "M" : "L"}${x(m.hoursDown).toFixed(1)},${y(m.revisedPerHour).toFixed(1)}`)
+                .join(" ")}
+              fill="none"
+              stroke={COLOR_REVISED}
+              strokeWidth="2.5"
+            />
+            <circle
+              cx={x(validatorHours)}
+              cy={y(marginalAt(validatorHours).revisedPerHour)}
+              r="5.5"
+              fill={COLOR_YOU}
+              stroke="#091011"
+              strokeWidth="2"
+            />
+          </>
+        ) : view === "cost" ? (
           <>
             <path
               d={`${linePath((p) => p.revisedUsd)} L${x(MAX_HOURS)},${y(0)} L${x(0)},${y(0)} Z`}
@@ -276,7 +358,7 @@ export function PenaltyComparisonChart({
             <g
               transform={`translate(${Math.min(x(hover.hoursDown) + 10, W - 190)}, ${M.top + 8})`}
             >
-              <rect width="180" height={view === "cost" ? 64 : 48} rx="6" fill="#111F22" stroke="#243D42" />
+              <rect width="180" height={view === "multiple" ? 48 : 64} rx="6" fill="#111F22" stroke="#243D42" />
               <text x="10" y="18" className="tooltip-title">
                 down {formatHours(hover.hoursDown)}
               </text>
@@ -287,6 +369,15 @@ export function PenaltyComparisonChart({
                   </text>
                   <text x="10" y="54" className="tooltip-line" fill={COLOR_TODAY}>
                     today {formatUsd(hover.todayUsd)}
+                  </text>
+                </>
+              ) : view === "marginal" ? (
+                <>
+                  <text x="10" y="37" className="tooltip-line" fill={COLOR_REVISED}>
+                    this hour {formatUsd(marginalAt(hover.hoursDown).revisedPerHour)}/h
+                  </text>
+                  <text x="10" y="54" className="tooltip-line" fill={COLOR_TODAY}>
+                    today {formatUsd(todayRate)}/h
                   </text>
                 </>
               ) : (
