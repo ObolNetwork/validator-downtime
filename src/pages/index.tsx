@@ -37,6 +37,66 @@ function readParam(params: URLSearchParams, key: string, lo: number, hi: number,
   return Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : fallback;
 }
 
+
+/** FAQ <details> with a copyable anchor link; opens + centres itself when the URL hash targets it. */
+function FaqItem({
+  id,
+  summary,
+  children,
+}: {
+  id: string;
+  summary: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  const ref = useRef<HTMLDetailsElement>(null);
+  const [anchorCopied, setAnchorCopied] = useState(false);
+
+  useEffect(() => {
+    if (window.location.hash === `#${id}` && ref.current) {
+      ref.current.open = true;
+      const t = setTimeout(
+        () => ref.current?.scrollIntoView({ behavior: "smooth", block: "center" }),
+        150
+      );
+      return () => clearTimeout(t);
+    }
+    return undefined;
+  }, [id]);
+
+  const copyAnchor = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (ref.current) ref.current.open = true;
+    const url = `${window.location.origin}${window.location.pathname}${window.location.search}#${id}`;
+    window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}#${id}`);
+    navigator.clipboard
+      .writeText(url)
+      .then(() => {
+        setAnchorCopied(true);
+        setTimeout(() => setAnchorCopied(false), 1600);
+      })
+      .catch(() => {});
+  };
+
+  return (
+    <details className="faq-item" id={id} ref={ref}>
+      <summary>
+        <span className="faq-question">{summary}</span>
+        <a
+          href={`#${id}`}
+          className={`faq-anchor${anchorCopied ? " copied" : ""}`}
+          onClick={copyAnchor}
+          aria-label="Copy a link to this question"
+          title="Copy a link to this question"
+        >
+          {anchorCopied ? "\u2713" : "#"}
+        </a>
+      </summary>
+      {children}
+    </details>
+  );
+}
+
 const IndexPage: React.FC<PageProps> = () => {
   const [eventPercent, setEventPercent] = useState<number>(DEFAULT_EVENT_PERCENT);
   const [cohortHours, setCohortHours] = useState<number>(DEFAULT_COHORT_HOURS);
@@ -73,7 +133,11 @@ const IndexPage: React.FC<PageProps> = () => {
       if (v !== PARAM_DEFAULTS[key as keyof typeof PARAM_DEFAULTS]) params.set(key, String(v));
     }
     const qs = params.toString();
-    window.history.replaceState(null, "", qs ? `?${qs}` : window.location.pathname);
+    window.history.replaceState(
+      null,
+      "",
+      `${qs ? `?${qs}` : window.location.pathname}${window.location.hash}`
+    );
   }, [eventPercent, cohortHours, validatorHours, stakeEth, ethPriceUsd]);
 
   const copyShareLink = () => {
@@ -127,7 +191,7 @@ const IndexPage: React.FC<PageProps> = () => {
             </div>
             <div className="hero-stat">
               <span className="stat-value">0.75%</span>
-              <span className="stat-label">of principal per day — the worst-case bleed ceiling</span>
+              <span className="stat-label">of principal per day — the worst-case ceiling, and it halves every ~6 days</span>
             </div>
           </div>
         </div>
@@ -222,7 +286,7 @@ const IndexPage: React.FC<PageProps> = () => {
           <h2>How the revised mechanism works</h2>
           <p className="section-lede">
             Each slot&rsquo;s <em>offline balance</em> is compared to a slow-moving average of
-            itself (half-life ≈ 12.6 days). The timely-target penalty is scaled by the excess:{" "}
+            itself (half-life ≈ 6.3 days). The timely-target penalty is scaled by the excess:{" "}
             <code>factor = min(1 + 765 × excess ⁄ committee_balance, 256)</code>.
           </p>
 
@@ -299,10 +363,7 @@ const IndexPage: React.FC<PageProps> = () => {
           <h2>Frequently asked questions</h2>
 
           <div className="faq-list">
-            <details className="faq-item">
-              <summary>
-                Why does a slow recoverer pay a bigger bill but a smaller multiple?
-              </summary>
+            <FaqItem id="slow-recoverer-multiple" summary={<>Why does a slow recoverer pay a bigger bill but a smaller multiple?</>}>
               <p>
                 Two forces move in opposite directions. Nominally, more hours down always costs
                 more — the bill grows monotonically. But the <em>scaled</em> hours are only the
@@ -313,10 +374,9 @@ const IndexPage: React.FC<PageProps> = () => {
                 fast responder might pay 30× today&rsquo;s rate on a small bill, while a
                 straggler pays 5× on a bigger one.
               </p>
-            </details>
+            </FaqItem>
 
-            <details className="faq-item">
-              <summary>Does this hurt solo stakers or small operators?</summary>
+            <FaqItem id="solo-stakers" summary={<>Does this hurt solo stakers or small operators?</>}>
               <p>
                 A validator whose downtime is uncorrelated with the rest of the network pays
                 exactly today&rsquo;s penalties — the factor is never below 1× and never above
@@ -325,13 +385,10 @@ const IndexPage: React.FC<PageProps> = () => {
                 shared-infrastructure, or majority-client failure mode. Small diverse setups
                 are the beneficiaries, not the targets.
               </p>
-            </details>
+            </FaqItem>
 
-            <details className="faq-item">
-              <summary>
-                My client attested with the wrong target during someone else&rsquo;s bug — am I
-                scaled?
-              </summary>
+            <FaqItem id="wrong-target" summary={<>My client attested with the wrong target during someone else&rsquo;s bug — am I
+                scaled?</>}>
               <p>
                 No. Scaling requires the &ldquo;offline signature&rdquo;: missing{" "}
                 <strong>both</strong> the timely-source and timely-target flags. If your node
@@ -341,10 +398,9 @@ const IndexPage: React.FC<PageProps> = () => {
                 deliberately protects minority-client operators during majority-client
                 incidents.
               </p>
-            </details>
+            </FaqItem>
 
-            <details className="faq-item">
-              <summary>What is the absolute worst case?</summary>
+            <FaqItem id="worst-case" summary={<>What is the absolute worst case?</>}>
               <p>
                 While roughly a third of stake is newly offline and your validator is fully
                 down, the revised mechanism bleeds at most ~0.75% of principal per day — and
@@ -353,10 +409,34 @@ const IndexPage: React.FC<PageProps> = () => {
                 Principal-scale losses remain exclusive to the (pre-existing) inactivity leak
                 and slashing; this EIP touches neither.
               </p>
-            </details>
+            </FaqItem>
 
-            <details className="faq-item">
-              <summary>Does the normal background offline rate change these numbers?</summary>
+            <FaqItem id="sustained-outages" summary={<>Could 0.75%/day run for weeks if a bug takes that long to fix?</>}>
+              <p>
+                No — the moving average is the built-in bound. The factor prices the excess
+                over a reference that chases any persistent outage with a 6.3-day half-life,
+                so the penalty <em>rate</em> halves every ~6 days even if nobody patches
+                anything. Suppose something ugly took 30% of the network down for a month
+                (below ⅓, so no inactivity leak): the bleed starts at ~0.66%/day — the full
+                0.75% needs a ⅓-of-stake event — is down to ~0.33%/day by day 6 and
+                ~0.06%/day by day 25. Integrated over <em>forever</em>, the extra cost above
+                today&rsquo;s rules converges to about <strong>0.2× the event&rsquo;s size</strong>:
+                ~6% of principal for a 30% event, ~2% for a 10% event — roughly 2.6 years of
+                rewards even in the absolute worst case (a ⅓ outage, never recovering).
+                Coming back online stops the scaling instantly, and half the lifetime total
+                lands in the first week. And a consumer-scale nightmare bounds itself
+                further: solo and home stakers are collectively a low single-digit percent
+                of stake, so even a failure hitting <em>every</em> home setup at once is a
+                small event here — a ~3% cohort draws a ~24× onset and a lifetime bound near
+                0.6% of principal, months of rewards, however hard it is to fix. For scale:
+                if the same scenario crossed ⅓ and finality broke, the pre-existing
+                inactivity leak alone takes ~50% of principal in 18 days. This
+                mechanism&rsquo;s worst multi-week trajectory stays far below the
+                protocol&rsquo;s existing crisis pricing.
+              </p>
+            </FaqItem>
+
+            <FaqItem id="baseline-offline" summary={<>Does the normal background offline rate change these numbers?</>}>
               <p>
                 No — and that&rsquo;s by design, not by omission. Around 0.3% of stake is
                 offline at any given moment in normal operation, and the mechanism&rsquo;s
@@ -369,19 +449,17 @@ const IndexPage: React.FC<PageProps> = () => {
                 total stake, not by the moving average — a design chosen precisely so the
                 curve doesn&rsquo;t drift as network participation changes.
               </p>
-            </details>
+            </FaqItem>
 
-            <details className="faq-item">
-              <summary>Where do the extra penalties go?</summary>
+            <FaqItem id="burned-not-redistributed" summary={<>Where do the extra penalties go?</>}>
               <p>
                 They&rsquo;re burned, like all attestation penalties today — not redistributed
                 to online validators. Your competitor going down earns you nothing, which
                 removes any incentive to attack other operators&rsquo; infrastructure.
               </p>
-            </details>
+            </FaqItem>
 
-            <details className="faq-item">
-              <summary>I run a large share of stake. How should I read these numbers?</summary>
+            <FaqItem id="large-operators" summary={<>I run a large share of stake. How should I read these numbers?</>}>
               <p>
                 Scale linearly: the calculator&rsquo;s per-32-ETH figures multiply by your
                 validator count (the mechanism is balance-weighted, so per-32-ETH stays the
@@ -390,10 +468,9 @@ const IndexPage: React.FC<PageProps> = () => {
                 around 9,000 ETH for a 10% operator. If your whole fleet shares one client,
                 cloud, or team, your event size <em>is</em> your fleet size.
               </p>
-            </details>
+            </FaqItem>
 
-            <details className="faq-item">
-              <summary>When would this go live?</summary>
+            <FaqItem id="when-live" summary={<>When would this go live?</>}>
               <p>
                 EIP-7716 is a draft under discussion, proposed for inclusion in the Hegotá
                 fork. The mechanism described here is the 2026 revision (
@@ -408,10 +485,9 @@ const IndexPage: React.FC<PageProps> = () => {
                 showed it barely differentiated correlated from uncorrelated failures. Nothing
                 here is final — treat every number as an estimate of a moving proposal.
               </p>
-            </details>
+            </FaqItem>
 
-            <details className="faq-item">
-              <summary>How do operators avoid correlated penalties?</summary>
+            <FaqItem id="avoid-correlated-penalties" summary={<>How do operators avoid correlated penalties?</>}>
               <p>
                 By failing alone, not together: run a minority client, avoid the most
                 crowded cloud providers and regions, and stagger upgrades rather than
@@ -420,7 +496,7 @@ const IndexPage: React.FC<PageProps> = () => {
                 fails, the rest keeps attesting. Under a mechanism that prices correlation,
                 anything that de-correlates your failures is the direct hedge.
               </p>
-            </details>
+            </FaqItem>
           </div>
 
           <p className="disclaimer">
@@ -722,6 +798,31 @@ const IndexPage: React.FC<PageProps> = () => {
 
         .faq-item[open] summary::after {
           transform: rotate(45deg);
+        }
+
+        .faq-question {
+          flex: 1;
+        }
+
+        .faq-anchor {
+          font-family: var(--font-mono);
+          font-size: 0.95rem;
+          color: var(--text-muted, #667A80);
+          text-decoration: none;
+          opacity: 0.55;
+          padding: 0 0.15rem;
+          flex-shrink: 0;
+          transition: color 0.15s ease, opacity 0.15s ease;
+        }
+
+        .faq-anchor:hover,
+        .faq-anchor.copied {
+          color: var(--accent, #2FE4AB);
+          opacity: 1;
+        }
+
+        .faq-item:target {
+          border-color: var(--accent, #2FE4AB);
         }
 
         .faq-item summary::-webkit-details-marker {

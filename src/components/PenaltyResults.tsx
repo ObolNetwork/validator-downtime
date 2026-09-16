@@ -194,7 +194,7 @@ export function PenaltyResults({
             <div className="model-notes">
               <p>
                 Penalty factor: <code>min(1 + {PENALTY_SLOPE} × offline_share, {MAX_PENALTY_FACTOR})</code>{" "}
-                at outage onset. The smoothing average has a ~12.6-day half-life, so within
+                at outage onset. The smoothing average has a ~6.3-day half-life, so within
                 events ≤48h the factor ≈ the onset factor while the cohort is down, and ≈ 1×
                 once it recovers. This approximation is exact within ~5% for events up to
                 48h; the integer-exact model lives in the{" "}

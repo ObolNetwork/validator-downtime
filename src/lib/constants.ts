@@ -20,8 +20,8 @@ export const MAX_PENALTY_FACTOR = 256;
 /** 3 × (cap − 1): makes the cap bind at exactly ⅓ of stake offline. */
 export const PENALTY_SLOPE = 765;
 
-/** Moving-average smoothing factor 2^17 → half-life ≈ 12.6 days. */
-export const OFFLINE_BALANCE_SMOOTHING_FACTOR = 2 ** 17;
+/** Moving-average smoothing factor 2^16 → half-life ≈ 6.3 days. */
+export const OFFLINE_BALANCE_SMOOTHING_FACTOR = 2 ** 16;
 
 /** Offline fraction at which the factor saturates and finality is at risk. */
 export const FINALITY_THRESHOLD = 1 / 3;

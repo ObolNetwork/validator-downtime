@@ -7,7 +7,7 @@
  *   excess = max(0, offline − smoothed_offline_balance)
  *   factor = min(1 + PENALTY_SLOPE × excess / committee_balance, MAX_PENALTY_FACTOR)
  *
- * The moving average has a ~12.6-day half-life, so within events lasting
+ * The moving average has a ~6.3-day half-life, so within events lasting
  * ≤~48h it barely moves. Approved simplification used here:
  * factor ≈ onset factor while the cohort is offline; factor ≈ 1 once the
  * cohort has recovered. Exact within ~5% for events ≤48h; the integer-exact
