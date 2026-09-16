@@ -52,15 +52,22 @@ function FaqItem({
   const [anchorCopied, setAnchorCopied] = useState(false);
 
   useEffect(() => {
-    if (window.location.hash === `#${id}` && ref.current) {
-      ref.current.open = true;
-      const t = setTimeout(
-        () => ref.current?.scrollIntoView({ behavior: "smooth", block: "center" }),
-        150
-      );
-      return () => clearTimeout(t);
-    }
-    return undefined;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const openIfTargeted = () => {
+      if (window.location.hash === `#${id}` && ref.current) {
+        ref.current.open = true;
+        timer = setTimeout(
+          () => ref.current?.scrollIntoView({ behavior: "smooth", block: "center" }),
+          150
+        );
+      }
+    };
+    openIfTargeted();
+    window.addEventListener("hashchange", openIfTargeted);
+    return () => {
+      window.removeEventListener("hashchange", openIfTargeted);
+      if (timer) clearTimeout(timer);
+    };
   }, [id]);
 
   const copyAnchor = (e: React.MouseEvent<HTMLAnchorElement>) => {
@@ -405,7 +412,11 @@ const IndexPage: React.FC<PageProps> = () => {
                 While roughly a third of stake is newly offline and your validator is fully
                 down, the revised mechanism bleeds at most ~0.75% of principal per day — and
                 that rate requires the cap to bind continuously. Below the cap it&rsquo;s
-                proportionally less, and it decays as the moving average catches up.
+                proportionally less, and it decays as the moving average catches up. Crucially,
+                that daily rate cannot run for long: summed over any outage, however endless,
+                the total extra cost is hard-bounded at ~0.2× the event&rsquo;s size — about
+                2.6 years of rewards in the absolute worst case (a ⅓ outage you never return
+                from). The <a href="#sustained-outages">next question</a> walks through why.
                 Principal-scale losses remain exclusive to the (pre-existing) inactivity leak
                 and slashing; this EIP touches neither.
               </p>
