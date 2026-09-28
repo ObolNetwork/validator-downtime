@@ -56,6 +56,36 @@ export const DISPLAY_STAKE_ETH = 32;
 /** Cumulative inactivity-leak loss ≈ balance × epochs² / 2^25 (score +4/epoch, quotient 2^26). */
 export const INACTIVITY_LEAK_QUOTIENT = 2 ** 25;
 
+// ── Safety-failure parameters (pre-existing, unchanged by EIP-7716) ─────────
+// Used to put the revised downtime penalties next to what a correlated
+// *safety* failure costs. Electra values, consensus-specs.
+
+/** Fraction of stake a validator must be on the same fork with for that fork to justify. */
+export const SUPERMAJORITY_THRESHOLD = 2 / 3;
+
+/** Initial slashing penalty = effective_balance / 4096 (MIN_SLASHING_PENALTY_QUOTIENT_ELECTRA). */
+export const MIN_SLASHING_PENALTY_QUOTIENT = 4096;
+
+/** Correlation penalty = balance × min(3 × slashed_fraction, 1) (PROPORTIONAL_SLASHING_MULTIPLIER_BELLATRIX). */
+export const PROPORTIONAL_SLASHING_MULTIPLIER = 3;
+
+/** A slashed validator stays eligible for penalties this many epochs (~36 days) before it's withdrawable. */
+export const EPOCHS_PER_SLASHINGS_VECTOR = 8192;
+
+/** Leak mechanics, exact: score +4 per missed epoch once finality is >4 epochs late, penalty = eff × score / 2^26. */
+export const INACTIVITY_SCORE_BIAS = 4;
+export const INACTIVITY_PENALTY_QUOTIENT = 2 ** 24;
+export const MIN_EPOCHS_TO_INACTIVITY_PENALTY = 4;
+
+/** Validators are force-exited once effective balance falls to 16 ETH (EJECTION_BALANCE). */
+export const EJECTION_BALANCE_ETH = 16;
+
+/** Exit queue throughput, ETH per epoch (MAX_PER_EPOCH_ACTIVATION_EXIT_CHURN_LIMIT, Electra). */
+export const EXIT_CHURN_ETH_PER_EPOCH = 256;
+
+/** Effective balance only steps down once balance is 0.25 ETH below it (hysteresis). */
+export const EFFECTIVE_BALANCE_DOWNWARD_THRESHOLD_ETH = 0.25;
+
 // ── Network economics snapshots ─────────────────────────────────────────────
 
 export interface EconomicsSnapshot {
@@ -129,6 +159,19 @@ export const CLIENT_SHARES: Array<{ name: string; percent: number; layer: "EL" |
   { name: "Teku", percent: 7, layer: "CL" },
   { name: "Lodestar", percent: 3, layer: "CL" },
   { name: "Grandine", percent: 2, layer: "CL" },
+];
+
+/**
+ * Stake-weighted execution-layer shares (supermajority.info via
+ * clientdiversity.org, Sept 2026). Partly modelled: ~59% of stake is
+ * self-reported by staking entities, the rest is estimated. The remaining
+ * ~6% of stake isn't broken out by client. There is no current
+ * stake-weighted CL source (Sigma Prime's blockprint was archived in 2025).
+ */
+export const EL_SHARES_STAKE_WEIGHTED: Array<{ name: string; percent: number; layer: "EL" }> = [
+  { name: "Geth", percent: 43, layer: "EL" },
+  { name: "Nethermind", percent: 43, layer: "EL" },
+  { name: "Besu", percent: 8, layer: "EL" },
 ];
 
 // ── Obol brand colors ───────────────────────────────────────────────────────

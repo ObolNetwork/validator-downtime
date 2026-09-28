@@ -33,6 +33,11 @@ npm run clean      # Clear Gatsby cache
 
 **`penaltyCalculator.test.ts`** — every row of the canonical anchors table (UPDATE_PLAN.md §3) is a test vector at `ANCHOR_ECONOMICS`, tolerance ±5%. **Do not "fix" a failing anchor — flag it.**
 
+**`safetyModel.ts`** — what the downtime penalty is buying down (pre-existing mechanisms, unchanged by the EIP):
+- `slashingLoss(fraction)` — correlated slashing: `min(3 × fraction, 1)` + 1/4096 initial + ~36 days missed duties
+- `lockoutLoss(trappedFraction)` — epoch-by-epoch leak sim for ≥⅔ on a justified wrong fork (Holesky, Feb 2025); loss is pinned by the ⅔ balance condition, ≈ 1 − (1−f)/2f
+- `riskTier` / `minimalRiskCombos(shares)` — smallest client sets crossing ⅓ (finality) and ⅔ (lockout); same-layer shares add, EL×CL combine as a union under an independence assumption
+
 **`constants.ts`** — protocol parameters and economics:
 - Revised EIP-7716: `MAX_PENALTY_FACTOR = 256`, `PENALTY_SLOPE = 765`, `OFFLINE_BALANCE_SMOOTHING_FACTOR = 2^17`
 - `ANCHOR_ECONOMICS` (July 2026, pins the tests) vs `CURRENT_ECONOMICS` (display defaults — refresh stake/APR from beaconcha.in/ethstore and the ETH price periodically)
@@ -44,16 +49,18 @@ npm run clean      # Clear Gatsby cache
 - **DowntimeControls** — cohort outage duration vs your downtime (independent), stake input
 - **PenaltyResults** — today / revised / multiple readout, payback days, leak split when >⅓, breakdown table
 - **PenaltyComparisonChart** — SVG cost-vs-hours-down curve (front-loaded vs today's proportional line) with a "× today" fairness view
+- **PainToScale** — area-true 1-ETH waffle: your revised downtime loss (a speck) vs the same cohort correlated-slashed, with the ratio
+- **ClientFailureTiers** — "why pay more for downtime" section: ⅓/⅔ tiers, computed client-combination list (node vs stake-weighted EL toggle), when bugs compound, halt-don't-steer (fallback ≠ threshold), Holesky callout
 - **EventPresets** — real incidents with replay-measured numbers; loading one is an *approximate* reconstruction (the calculator shows the clean worst case, replay means are gentler)
 - **Header/Footer** — Obol branding and resource links
 
 ### Page (`src/pages/index.tsx`)
 
-Hero → Calculator → Fairness section (fast vs slow recoverer) → Mechanism explainers → FAQ → disclaimer.
+Hero (live "short-term pain, long-term gain" hook) → Calculator (incl. PainToScale) → ClientFailureTiers → Fairness section (fast vs slow recoverer) → Mechanism explainers → FAQ → disclaimer.
 
 ## Key Technical Notes
 
-1. **Scope rules that must survive any copy edit**: factor never below 1×; only both-flags-missed validators are scaled; penalties are burned not redistributed; >⅓ totals must attribute the inactivity-leak share honestly (it predates this EIP).
+1. **Scope rules that must survive any copy edit**: factor never below 1×; only both-flags-missed validators are scaled; penalties are burned not redistributed; >⅓ totals must attribute the inactivity-leak share honestly (it predates this EIP). Safety-failure copy: the unrecoverable line is ⅔ on the same wrong fork (not ⅓); EIP-7716 doesn't prevent slashing, it prices the crowding that makes bugs dangerous; Holesky facts come from the EF/pm post-mortem only.
 2. **Per-32-ETH normalization** stays correct despite Electra's 2048-ETH max balance — the mechanism is balance-weighted.
 3. **Static site**: all client-side, no backend. Component styles are inline CSS-in-JS. Fonts: Archivo (display) + IBM Plex Mono (data) via Google Fonts in `Head`.
 4. **Path alias**: `@/*` maps to `src/*`.

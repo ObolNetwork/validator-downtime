@@ -10,6 +10,8 @@ import {
   EventPresets,
   PenaltyResults,
   PenaltyComparisonChart,
+  PainToScale,
+  ClientFailureTiers,
 } from "../components";
 import {
   DEFAULT_EVENT_PERCENT,
@@ -19,7 +21,8 @@ import {
   MAX_HOURS,
   DEFAULT_ECONOMICS,
 } from "../lib/constants";
-import { onsetFactor, formatFactor } from "../lib/penaltyCalculator";
+import { onsetFactor, formatFactor, calculateOutage } from "../lib/penaltyCalculator";
+import { slashingLoss } from "../lib/safetyModel";
 
 /** Calculator state ⇄ shareable query string (?event=10&cohort=6&you=24&stake=32&price=2450). */
 const PARAM_DEFAULTS = {
@@ -168,6 +171,21 @@ const IndexPage: React.FC<PageProps> = () => {
     calculatorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
+  // Hero hook: this outage under the revised rules vs the same cohort slashed (per 32 ETH).
+  const heroEcon = { ...DEFAULT_ECONOMICS, ethPriceUsd };
+  const heroOutageEth = calculateOutage(
+    {
+      eventFraction: eventPercent / 100,
+      cohortHoursDown: cohortHours,
+      validatorHoursDown: validatorHours,
+      stakeEth: 32,
+    },
+    heroEcon
+  ).revisedLossEth;
+  const heroSlashEth = slashingLoss(eventPercent / 100, 32, heroEcon).totalEth;
+  const fmtHeroEth = (eth: number) =>
+    eth >= 10 ? eth.toFixed(1) : eth >= 1 ? eth.toFixed(2) : eth >= 0.01 ? eth.toFixed(3) : eth.toFixed(4);
+
   return (
     <main>
       <Header />
@@ -184,8 +202,22 @@ const IndexPage: React.FC<PageProps> = () => {
             Ethereum punishes correlated slashing. In 2027, it will punish correlated downtime
             too. Fail alone and you pay exactly today&rsquo;s rates. Fail alongside{" "}
             <strong>{eventPercent}%</strong> of the network and the first hours are charged at{" "}
-            <strong>~{formatFactor(onsetFactor(eventPercent / 100))}</strong> — drag the slider
-            below to see it move.
+            <strong>~{formatFactor(onsetFactor(eventPercent / 100))}</strong>.{" "}
+            {eventPercent > 0 ? (
+              <>
+                <em>Short-term pain, for long-term gain:</em> that outage costs{" "}
+                <strong>~{fmtHeroEth(heroOutageEth)} ETH</strong> per validator, while a
+                correlated slashing of the same {eventPercent}% would take{" "}
+                <strong>~{fmtHeroEth(heroSlashEth)} ETH</strong>. The penalty pays you to leave a
+                crowded client before a critical bug does it for you.{" "}
+              </>
+            ) : (
+              <>
+                <em>Short-term pain, for long-term gain:</em> the penalty pays you to leave a
+                crowded client before a critical bug does it for you.{" "}
+              </>
+            )}
+            <a href="#pain-to-scale">See it to scale&nbsp;↓</a>
           </p>
           <div className="hero-stats">
             <div className="hero-stat">
@@ -232,6 +264,12 @@ const IndexPage: React.FC<PageProps> = () => {
               stakeEth={stakeEth}
               ethPriceUsd={ethPriceUsd}
             />
+            <PainToScale
+              eventPercent={eventPercent}
+              cohortHours={cohortHours}
+              validatorHours={validatorHours}
+              ethPriceUsd={ethPriceUsd}
+            />
             <EventPresets onLoad={loadPreset} />
             <div className="share-row">
               <button type="button" className="share-button" onClick={copyShareLink}>
@@ -244,6 +282,8 @@ const IndexPage: React.FC<PageProps> = () => {
           </div>
         </div>
       </section>
+
+      <ClientFailureTiers />
 
       <section className="fairness-section">
         <div className="container">
@@ -370,6 +410,20 @@ const IndexPage: React.FC<PageProps> = () => {
           <h2>Frequently asked questions</h2>
 
           <div className="faq-list">
+            <FaqItem id="why-pay-more" summary={<>Why make correlated downtime more expensive at all?</>}>
+              <p>
+                Short-term pain for long-term gain. The crowding that makes a client&rsquo;s outage
+                a correlated one also makes its bugs dangerous. A signing bug in a client with 25%
+                of stake slashes ~75% of every affected validator&rsquo;s principal. A consensus bug
+                shared by clients with ⅔ of stake carries them onto a fork they can&rsquo;t leave
+                without losing most or all of it. Those failures are rare and the protocol prices
+                them only after they happen. Downtime is common, so pricing it (a few hundred dollars
+                per validator in a large event, around 1/100th of a correlated slashing or less) is how the
+                protocol nudges stake to spread out <em>before</em> the rare failure.{" "}
+                <a href="#when-clients-fail-together">The tiers and client combinations are above</a>.
+              </p>
+            </FaqItem>
+
             <FaqItem id="slow-recoverer-multiple" summary={<>Why does a slow recoverer pay a bigger bill but a smaller multiple?</>}>
               <p>
                 Two forces move in opposite directions. Nominally, more hours down always costs
@@ -498,13 +552,52 @@ const IndexPage: React.FC<PageProps> = () => {
               </p>
             </FaqItem>
 
+            <FaqItem id="holesky-incident" summary={<>What happened on Holesky, and could it happen on mainnet?</>}>
+              <p>
+                At Holesky&rsquo;s Pectra upgrade on 24 February 2025, Geth, Nethermind and Besu
+                each had a different wrong deposit-contract address in their Holesky config. Each
+                fell back to an empty deposit list, so all three agreed on the same wrong result
+                and accepted an invalid block that Erigon and Reth rejected. A supermajority of
+                validators followed that chain and justified it. From then on, voting on the
+                correct chain meant a surround vote, so their slashing protection refused. The
+                choices were wiping it and getting slashed, or sitting out an inactivity leak.
+                Finality came back on 10 March after two weeks of coordinated recovery. The exit
+                queue was left full for over a year, and the testnet was replaced by Hoodi (
+                <a
+                  href="https://github.com/ethereum/pm/blob/master/Network-Upgrade-Archive/Pectra/holesky-postmortem.md"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  post-mortem
+                </a>
+                ). Mainnet ran different, correct config for that fork. But the same three clients
+                carry well over ⅔ of mainnet nodes today, and every hard fork activates new code for
+                all of them in the same epoch. EIP-7716 doesn&rsquo;t prevent a bug like that; it
+                pays operators to make sure no bug is shared by that much stake.
+              </p>
+            </FaqItem>
+
+            <FaqItem id="backup-beacon-node" summary={<>I run a backup beacon node on a different client. Am I protected?</>}>
+              <p>
+                From downtime, yes. From a wrong fork, no. A primary/fallback setup uses whichever
+                node answers, so if your primary follows a bad chain, you sign it. Protection comes
+                from requiring <em>agreement</em>: a majority or threshold rule across nodes running
+                different clients, where each node checks what it&rsquo;s asked to sign against its
+                own view. When the nodes disagree, a setup like that halts instead of signing.
+                Halting costs a downtime penalty; signing a justified wrong fork can cost the
+                validator. The trade-off is liveness: the stricter the agreement rule, the more
+                often a single node&rsquo;s trouble stops you.
+              </p>
+            </FaqItem>
+
             <FaqItem id="avoid-correlated-penalties" summary={<>How do operators avoid correlated penalties?</>}>
               <p>
                 By failing alone, not together: run a minority client, avoid the most
                 crowded cloud providers and regions, and stagger upgrades rather than
                 rolling a whole fleet at once. Splitting a validator across independent
                 nodes (distributed validators) is another option — if part of the cluster
-                fails, the rest keeps attesting. Under a mechanism that prices correlation,
+                fails, the rest keeps attesting, and if the nodes disagree about the chain, the
+                cluster halts rather than signing a fork only some of them see. Under a mechanism that prices correlation,
                 anything that de-correlates your failures is the direct hedge.
               </p>
             </FaqItem>
@@ -561,7 +654,7 @@ const IndexPage: React.FC<PageProps> = () => {
         .hero-subtitle {
           font-size: 1.05rem;
           color: var(--text-secondary, #9DBFC8);
-          max-width: 620px;
+          max-width: 680px;
           margin: 0 auto;
           line-height: 1.65;
         }
@@ -569,6 +662,15 @@ const IndexPage: React.FC<PageProps> = () => {
         .hero-subtitle em {
           color: var(--text-primary, #DFEAED);
           font-style: italic;
+        }
+
+        .hero-subtitle strong {
+          white-space: nowrap;
+        }
+
+        .hero-subtitle a {
+          color: var(--accent, #2FE4AB);
+          white-space: nowrap;
         }
 
         .hero-stats {
