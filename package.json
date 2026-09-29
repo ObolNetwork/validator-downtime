@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Interactive visualizer for EIP-7716 anti-correlation attestation penalties",
   "private": true,
+  "license": "Apache-2.0",
   "scripts": {
     "develop": "gatsby develop",
     "start": "gatsby develop",
