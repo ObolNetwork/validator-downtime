@@ -39,7 +39,7 @@ npm run clean      # Clear Gatsby cache
 - `riskTier` / `minimalRiskCombos(shares)` — smallest client sets crossing ⅓ (finality) and ⅔ (lockout); same-layer shares add, EL×CL combine as a union under an independence assumption
 
 **`constants.ts`** — protocol parameters and economics:
-- Revised EIP-7716: `MAX_PENALTY_FACTOR = 256`, `PENALTY_SLOPE = 765`, `OFFLINE_BALANCE_SMOOTHING_FACTOR = 2^17`
+- Revised EIP-7716: `MAX_PENALTY_FACTOR = 256`, `PENALTY_SLOPE = 765`, `OFFLINE_BALANCE_SMOOTHING_FACTOR = 2^16` (half-life ≈ 6.3 days)
 - `ANCHOR_ECONOMICS` (July 2026, pins the tests) vs `CURRENT_ECONOMICS` (display defaults — refresh stake/APR from beaconcha.in/ethstore and the ETH price periodically)
 - Client shares for quick-picks (clientdiversity.org), Obol brand colors
 
