@@ -1,0 +1,11 @@
+# EIP-7716 Validator Downtime Calculator
+# All crawlers welcome, including AI agents and LLM crawlers.
+User-agent: *
+Allow: /
+
+Sitemap: https://validatordowntime.obol.org/sitemap.xml
+
+# For LLMs and agents:
+#   Index:          https://validatordowntime.obol.org/llms.txt
+#   Full reference: https://validatordowntime.obol.org/llms-full.txt
+#   Agent Skill:    https://validatordowntime.obol.org/skill.md

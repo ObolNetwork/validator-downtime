@@ -26,11 +26,18 @@ export function Footer() {
             <div className="link-group">
               <h4>The proposal</h4>
               <a
-                href="https://github.com/ethereum/EIPs/pull/11962"
+                href="https://eips.ethereum.org/EIPS/eip-7716"
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                EIP-7716 (revision PR)
+                EIP-7716 specification
+              </a>
+              <a
+                href="https://forkcast.org/eips/7716"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Hegotá status (Forkcast)
               </a>
               <a
                 href="https://ethresear.ch/t/supporting-decentralized-staking-through-more-anti-correlation-incentives/19116/18"
@@ -54,14 +61,21 @@ export function Footer() {
                 consensus-specs PR
               </a>
             </div>
+            <div className="link-group">
+              <h4>For AI agents</h4>
+              <a href="#ask-an-agent">Copy a prompt</a>
+              <a href="/llms.txt">llms.txt</a>
+              <a href="/llms-full.txt">llms-full.txt</a>
+              <a href="/skill.md">skill.md</a>
+            </div>
           </div>
         </div>
 
         <div className="footer-bottom">
           <p>
-            This calculator provides estimates for a draft EIP under discussion for the
-            Hegotá fork. Actual penalties may vary based on network conditions and
-            implementation details.
+            This calculator provides estimates for EIP-7716, a Draft EIP proposed for
+            inclusion in the Hegotá fork. Actual penalties may vary based on network
+            conditions and implementation details.
           </p>
           <p className="copyright">
             Open source under MIT license.

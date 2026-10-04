@@ -12,6 +12,7 @@ import {
   PenaltyComparisonChart,
   PainToScale,
   ClientFailureTiers,
+  AskAnAgent,
 } from "../components";
 import {
   DEFAULT_EVENT_PERCENT,
@@ -32,6 +33,15 @@ const PARAM_DEFAULTS = {
   stake: 32,
   price: DEFAULT_ECONOMICS.ethPriceUsd,
 };
+
+/** Query string for the given inputs, omitting any left at their defaults. */
+function scenarioQuery(values: Record<keyof typeof PARAM_DEFAULTS, number>): string {
+  const params = new URLSearchParams();
+  for (const [key, v] of Object.entries(values)) {
+    if (v !== PARAM_DEFAULTS[key as keyof typeof PARAM_DEFAULTS]) params.set(key, String(v));
+  }
+  return params.toString();
+}
 
 function readParam(params: URLSearchParams, key: string, lo: number, hi: number, fallback: number): number {
   const raw = params.get(key);
@@ -131,18 +141,13 @@ const IndexPage: React.FC<PageProps> = () => {
   // Keep the URL in sync so the current view is always copy-shareable.
   useEffect(() => {
     if (!hydratedFromUrl.current) return;
-    const values: Record<string, number> = {
+    const qs = scenarioQuery({
       event: eventPercent,
       cohort: cohortHours,
       you: validatorHours,
       stake: stakeEth,
       price: ethPriceUsd,
-    };
-    const params = new URLSearchParams();
-    for (const [key, v] of Object.entries(values)) {
-      if (v !== PARAM_DEFAULTS[key as keyof typeof PARAM_DEFAULTS]) params.set(key, String(v));
-    }
-    const qs = params.toString();
+    });
     window.history.replaceState(
       null,
       "",
@@ -171,6 +176,15 @@ const IndexPage: React.FC<PageProps> = () => {
     calculatorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
+  const scenarioQs = scenarioQuery({
+    event: eventPercent,
+    cohort: cohortHours,
+    you: validatorHours,
+    stake: stakeEth,
+    price: ethPriceUsd,
+  });
+  const scenarioUrl = `https://validatordowntime.obol.org/${scenarioQs ? `?${scenarioQs}` : ""}`;
+
   // Hero hook: this outage under the revised rules vs the same cohort slashed (per 32 ETH).
   const heroEcon = { ...DEFAULT_ECONOMICS, ethPriceUsd };
   const heroOutageEth = calculateOutage(
@@ -192,7 +206,12 @@ const IndexPage: React.FC<PageProps> = () => {
 
       <div className="hero">
         <div className="container">
-          <p className="hero-kicker">EIP-7716 · anti-correlation penalties · proposed for Hegotá</p>
+          <p className="hero-kicker">
+            EIP-7716 · anti-correlation penalties ·{" "}
+            <a href="https://forkcast.org/eips/7716" target="_blank" rel="noopener noreferrer">
+              proposed for Hegotá
+            </a>
+          </p>
           <h1>
             What will correlated downtime
             <br />
@@ -537,18 +556,23 @@ const IndexPage: React.FC<PageProps> = () => {
 
             <FaqItem id="when-live" summary={<>When would this go live?</>}>
               <p>
-                EIP-7716 is a draft under discussion, proposed for inclusion in the Hegotá
-                fork. The mechanism described here is the 2026 revision (
                 <a
-                  href="https://github.com/ethereum/EIPs/pull/11962"
+                  href="https://eips.ethereum.org/EIPS/eip-7716"
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  ethereum/EIPs#11962
-                </a>
-                ), which replaced the 2024 draft&rsquo;s counter-based design after replays
-                showed it barely differentiated correlated from uncorrelated failures. Nothing
-                here is final — treat every number as an estimate of a moving proposal.
+                  EIP-7716
+                </a>{" "}
+                is in Draft status and{" "}
+                <a href="https://forkcast.org/eips/7716" target="_blank" rel="noopener noreferrer">
+                  Proposed for Inclusion in the Hegotá fork
+                </a>{" "}
+                (All Core Devs – Consensus #177, April 2026). Forkcast tracks its status as
+                Hegotá&rsquo;s scope is decided. The mechanism
+                described here is the 2026 revision, now the published EIP text, which replaced
+                the 2024 draft&rsquo;s counter-based design after replays showed it barely
+                differentiated correlated from uncorrelated failures. Nothing here is final —
+                treat every number as an estimate of a proposal that can still change.
               </p>
             </FaqItem>
 
@@ -603,6 +627,8 @@ const IndexPage: React.FC<PageProps> = () => {
             </FaqItem>
           </div>
 
+          <AskAnAgent scenarioUrl={scenarioUrl} />
+
           <p className="disclaimer">
             This tool models a <strong>draft EIP</strong> using an approved simplification
             (exact within ~5% for events ≤48h) and network economics that drift daily. It is
@@ -634,6 +660,13 @@ const IndexPage: React.FC<PageProps> = () => {
           text-transform: uppercase;
           color: var(--accent, #2FE4AB);
           margin-bottom: 1.1rem;
+        }
+
+        .hero-kicker a {
+          color: inherit;
+          text-decoration: underline;
+          text-decoration-color: rgba(47, 228, 171, 0.4);
+          text-underline-offset: 0.2em;
         }
 
         .hero h1 {
@@ -1029,5 +1062,30 @@ export const Head: HeadFC = () => (
     />
     <meta name="twitter:image" content="https://validatordowntime.obol.org/og-image.png" />
     <link rel="canonical" href="https://validatordowntime.obol.org/" />
+    <link rel="sitemap" type="application/xml" href="/sitemap.xml" />
+    {/* Machine-readable versions for LLMs and agents (llmstxt.org). */}
+    <link rel="alternate" type="text/markdown" href="/llms.txt" title="llms.txt" />
+    <link rel="alternate" type="text/markdown" href="/llms-full.txt" title="llms-full.txt" />
+    <link rel="alternate" type="text/markdown" href="/skill.md" title="Agent Skill" />
+    <script type="application/ld+json">
+      {JSON.stringify({
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        name: "EIP-7716 Validator Downtime Calculator",
+        url: "https://validatordowntime.obol.org/",
+        applicationCategory: "FinanceApplication",
+        operatingSystem: "Any",
+        isAccessibleForFree: true,
+        description:
+          "Estimates what correlated downtime costs Ethereum validators under EIP-7716 anti-correlation attestation penalties (Draft, proposed for the Hegotá fork).",
+        about: {
+          "@type": "CreativeWork",
+          name: "EIP-7716: Anti-Correlation Attestation Penalties",
+          url: "https://eips.ethereum.org/EIPS/eip-7716",
+        },
+        publisher: { "@type": "Organization", name: "Obol", url: "https://obol.org" },
+        sameAs: ["https://github.com/ObolNetwork/validator-downtime"],
+      })}
+    </script>
   </>
 );

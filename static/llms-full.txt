@@ -1,0 +1,189 @@
+# EIP-7716 Validator Downtime Calculator: full reference
+
+> What correlated downtime costs Ethereum validators under EIP-7716 (Anti-Correlation Attestation Penalties), the 2026 revision, and what that extra cost buys down. Source: https://validatordowntime.obol.org/ (built by contributors at Obol, open source at https://github.com/ObolNetwork/validator-downtime). This file is the site's content in one place, written for language models and agents. Short index: https://validatordowntime.obol.org/llms.txt
+
+## Status
+
+- Spec: https://eips.ethereum.org/EIPS/eip-7716 (EIP status: Draft).
+- Fork: Proposed for Inclusion (PFI) in the Hegotá network upgrade, at All Core Devs – Consensus call #177 on 2026-04-16. Presented again at ACDC #184 on 2026-08-06. Live status: https://forkcast.org/eips/7716
+- The 2026 revision was merged into the EIP text on 2026-09-29. It replaced the 2024 draft's counter-based design (NET_EXCESS_PENALTIES), which replays showed barely differentiated correlated from uncorrelated failures.
+- Consensus-specs feature PR: https://github.com/ethereum/consensus-specs/pull/5452
+- Nothing is final. Treat every number below as an estimate of a proposal that can still change. If you need the current inclusion status, check Forkcast rather than this file.
+
+## The mechanism in one paragraph
+
+Each slot, the protocol compares the balance of validators that went offline to a slow-moving average of that same quantity. The timely-target attestation penalty is multiplied by a factor that grows with the excess:
+
+```
+excess = max(0, offline_balance − smoothed_offline_balance)
+factor = min(1 + PENALTY_SLOPE × excess / committee_balance, MAX_PENALTY_FACTOR)
+```
+
+Constants:
+
+| Constant | Value | Meaning |
+|---|---|---|
+| `MAX_PENALTY_FACTOR` | 256 | Cap, and the single severity knob |
+| `PENALTY_SLOPE` | 765 = 3 × (cap − 1) | Makes the cap bind at exactly ⅓ of stake offline |
+| `OFFLINE_BALANCE_SMOOTHING_FACTOR` | 2^16 | Moving-average half-life ≈ 6.3 days |
+
+Because the slope is normalized by total active balance (not by the moving average), the normal ~0.3% background offline rate cancels out: the factor depends only on the size of the anomaly.
+
+## Properties that must not be misstated
+
+1. **Uncorrelated failures pay exactly today's penalties.** The factor is never below 1×. There are no discounts and no rewards for being online while others are down.
+2. **Severity scales with event size, at onset.** Onset factor ≈ `min(1 + 765 × f, 256)` where `f` is the share of total stake that went down together.
+3. **Front-loaded.** The factor is high while the cohort is down and returns to ~1× once the cohort recovers, because the moving average absorbs the event. You pay for joining the correlation, not for how long your fix takes.
+4. **Only the "offline signature" is scaled:** validators missing BOTH the timely-source and timely-target flags. A validator that was live but voted a wrong target (late epoch-boundary block, minority client during a majority-client split, relay outage) keeps the source flag and pays today's unscaled rate. This protects minority-client operators during majority-client incidents.
+5. **Burned, not redistributed.** Nobody earns more when a competitor goes down, so there is no incentive to attack other operators.
+6. **Above ⅓ offline**, finality stops and the pre-existing inactivity leak (unchanged by EIP-7716) activates. It grows quadratically and dominates multi-day totals. Attribute it honestly: most of a multi-day finality-loss bill is the leak, not EIP-7716.
+7. **Bounded.** Worst-case bleed is ~0.75% of principal per day, and only while a ⅓-of-stake cohort is down and the cap binds. The rate halves roughly every 6 days as the average catches up. Integrated over forever, the extra cost above today's rules converges to about 0.2× the event's size (≈6% of principal for a 30% event, ≈2% for a 10% event, ≈2.6 years of rewards in the absolute worst case).
+8. **Per-32-ETH figures scale linearly.** The mechanism is balance-weighted, so per-32-ETH stays the right unit even with Electra's 2048-ETH maximum effective balance.
+9. **EIP-7716 does not prevent slashing or wrong-fork lockouts.** It prices the client crowding that makes those bugs dangerous.
+
+## Onset factor by event size
+
+| Share of stake down together | Onset factor |
+|---|---|
+| alone (≈0%) | 1× |
+| 1% | ~8.7× |
+| 3% | ~24× |
+| 5% | ~39× |
+| 10% | ~78× |
+| 20% | ~154× |
+| 30% | ~231× |
+| ⅓ or more | 256× (cap) |
+
+## How the calculator computes a loss
+
+The site uses an approved simplification: within events up to ~48h the moving average barely moves, so factor ≈ onset factor while the cohort is down and ≈ 1 once it recovers. Exact within ~5% of the integer-exact model for events ≤48h.
+
+```
+epochs_down    = your_hours_down × 9.375          # 1 epoch = 384 s
+cohort_epochs  = cohort_hours_down × 9.375
+high_epochs    = min(epochs_down, cohort_epochs)
+base           = stake_eth × 64 / sqrt(total_staked_gwei)   # ETH per epoch (spec base reward)
+
+forgone        = base × 54/64 × epochs_down       # rewards you didn't earn (same under both rules)
+source_penalty = base × 14/64 × epochs_down       # never scaled
+target_today   = base × 26/64 × epochs_down
+target_revised = base × 26/64 × (factor × high_epochs + (epochs_down − high_epochs))
+leak           = stake_eth × high_epochs² / 2^25  # only if event > ⅓; runs while the cohort is down
+
+today_loss     = forgone + source_penalty + target_today   + leak
+revised_loss   = forgone + source_penalty + target_revised + leak
+multiple       = revised_loss / today_loss
+payback_days   = loss / (stake_eth × APR / 365)   # days of full CL+EL rewards to re-earn it
+```
+
+Simplification for >⅓ events: the leak is modeled as stopping the moment finality resumes. In reality inactivity scores decay over the following hours, so validators still offline then bleed slightly more (negligible for short leaks, ~15–20% extra for stragglers after multi-day ones).
+
+## Worked examples (per 32 ETH)
+
+Economics: 41.8M ETH staked, 2.57% CL+EL APR, ETH = $2,450 (site defaults, September 2026). These drift; recompute with current values when precision matters.
+
+| Scenario | Factor | Today | Revised | Multiple | Payback today → revised | Same cohort correlated-slashed |
+|---|---|---|---|---|---|---|
+| Alone, down 24h | 1× | 0.0033 ETH | 0.0033 ETH | 1.0× | 1.5 d → 1.5 d | n/a |
+| 1% of stake, all down 2h | 8.7× | 0.00028 ETH | 0.00086 ETH | 3.1× | 0.1 d → 0.4 d | 1.0 ETH |
+| 10% down 6h, you 6h | 78× | 0.00083 ETH | 0.0183 ETH | 22× | 0.4 d → 8.1 d | 9.7 ETH |
+| 10% down 6h, you 24h | 78× | 0.0033 ETH | 0.0208 ETH | 6.3× | 1.5 d → 9.2 d | 9.7 ETH |
+| 20% down 4h, you 4h | 154× | 0.00055 ETH | 0.0239 ETH | 43× | 0.2 d → 10.6 d | 19.3 ETH |
+| 30% down 24h, you 24h | 231× | 0.0033 ETH | 0.213 ETH | 65× | 1.5 d → 95 d | 28.9 ETH |
+| 40% down 12h, you 12h (leak active) | 256× | 0.0137 ETH | 0.130 ETH (0.012 of it leak) | 9.5× | 6.1 d → 58 d | 32 ETH (all of it) |
+
+Reading the 10%/24h row against the 10%/6h row: being down four times as long added only ~13% to the revised bill, because after hour 6 the cohort has recovered and you're back at ~1×. The multiple over today's rules falls from 22× to 6.3×.
+
+Large operators: multiply per-32-ETH figures by validator count. Anchor from the research: a 10%-of-stake event lasting 24h costs roughly 900 ETH per 1% of total stake an operator runs (around 9,000 ETH for a 10% operator).
+
+## Real incidents, replayed
+
+Measured by replaying the revised mechanism over actual mainnet participation data. Payback is the event-window mean per 32 ETH, in time of full rewards.
+
+| Event | Date | Peak offline | Payback today | Payback revised | Multiple |
+|---|---|---|---|---|---|
+| Finality incidents (two brief finality losses; cap binds well before peak) | 11–12 May 2023 | 69% | 46 min | 1.9 days | 79× |
+| Besu halt (EL halt, fixed within hours) | 6 Jan 2024 | 12.4% | 1.3 h | 4.3 h | 3.5× |
+| Nethermind bug (consensus bug in a ~19% EL) | 21 Jan 2024 | 18.8% | 1.5 h | 21 h | 14× |
+| Prysm post-Fusaka (largest correlated outage since the Merge; recovery over a day) | 4 Dec 2025 | 29.8% | 2.5 h | 4.7 days | 45× |
+
+Fairness, from the Prysm post-Fusaka replay: operators who took 24–36h to recover paid 1.5× what the 6–8h crowd paid under the revised rules; today's rules charge 4.7× for the same spread. The multiple over today's cost fell from ~57× for the fastest responders to ~9× for the slowest. Being down ten times longer cost about 2.1× as much, not 10×.
+
+The calculator's presets load these as approximate reconstructions. The calculator shows the clean worst case; replay means are gentler.
+
+## Why make downtime more expensive at all
+
+Short-term pain for long-term gain. Correlated downtime and correlated safety failures share a cause: too much stake running the same software. Downtime is common and survivable. A safety failure is rare and destroys principal. EIP-7716 charges for crowding through the cheap failure so stake spreads out before the expensive one arrives.
+
+What the protocol already charges (pre-existing rules, unchanged by EIP-7716):
+
+- **Correlated slashing.** Loss ≈ balance × min(3 × share slashed together, 1), plus balance/4096 initial penalty and ~36 days of missed duties. A signing bug in a client with 25% of stake takes ~75% of each affected validator's principal. That is ~100× or more what the same cohort pays for a day of correlated downtime under EIP-7716.
+- **Wrong-fork lockout.** Once ⅔ or more of stake justifies an invalid chain, those validators can't vote on the canonical chain without surround votes (slashable, and slashed alongside ≥⅓ of stake, which takes 100%). Staying out means leaking until the honest side is ⅔ of active stake again: ~72% of balance lost at ⅔ trapped (~30 days to finality) and ~96% at 95% trapped (~52 days). Epoch-by-epoch simulation, honest side assumed online; approximate.
+
+Tiers by how much stake ends up on the same wrong view:
+
+- **Under ⅓: contained.** The chain keeps finalizing. The cohort pays downtime penalties: pennies today, tens to hundreds of dollars per validator under EIP-7716.
+- **⅓ to ⅔: finality lost, still recoverable.** The inactivity leak runs. The wrong fork can't justify with under ⅔ behind it, so the cohort can return with no slashable votes once fixed.
+- **⅔ or more: locked out.** See above.
+
+When separate client bugs add up: they fail toward the same answer (a missing setting falls back to an empty list, zero address or mainnet's value), they trip on the same invalid block, or they share an input (spec text, network config, a crypto library). When they don't: different wrong values produce different forks, each too small to justify; crashes vote for nothing, so they add toward ⅓ (finality) but never toward ⅔.
+
+The site computes the smallest client combinations whose shared failure crosses ⅓ and ⅔ from clientdiversity.org node-count data (and supermajority.info stake-weighted EL estimates). Same-layer shares add; an EL bug and a CL bug that take the same wrong view combine as a union (a + b − ab), assuming EL and CL choice are independent. Having no single client above ⅔ isn't enough: two can get there together.
+
+### A bug should be able to stop you, never steer you
+
+The number that matters isn't how many clients you run, it's how many of your nodes must agree before you sign. Validator Beat (https://validatorbeat.com/methodology/) grades this: Stage 1 = no single failure can get you slashed; Stage 2 = no single failure can get you slashed or take you offline.
+
+- **Primary + fallback beacon nodes** use whichever node answers. A buggy primary steers you onto the wrong fork with everyone else. Covers a node going offline, not a node being wrong: short of Stage 1.
+- **Threshold / majority setups** (e.g. distributed validators whose nodes run different clients and check each attestation candidate against their own beacon node before agreeing) sign only when enough independent nodes agree. In a 3-of-4 setup on four different execution clients: one buggy client → the other three agree, you keep attesting (Stage 2). Two sharing a bug (the Holesky shape) → 2 vs 2, you halt: offline, not slashable, and you resume on the canonical chain after the fix.
+- Trade-off: stricter agreement halts more often. EIP-7716 makes that halt slightly more expensive, still a rounding error next to the loss it prevents.
+
+### Holesky, 24 February 2025 (Pectra upgrade)
+
+Source: the EF post-mortem only, https://github.com/ethereum/pm/blob/master/Network-Upgrade-Archive/Pectra/holesky-postmortem.md
+
+Geth, Nethermind and Besu each had a different wrong deposit-contract address in their Holesky config. Each fell back to an empty deposit list, so all three computed the same wrong result and accepted an invalid block that Erigon and Reth rejected. A supermajority of validators followed that chain and justified it. Voting on the correct chain then meant a surround vote, so slashing protection refused. Finality returned on 10 March after two weeks of coordinated recovery. The exit queue stayed full for over a year and the testnet was replaced by Hoodi. Mainnet ran different, correct config for that fork, but the same three clients carry well over ⅔ of mainnet nodes today, and every hard fork activates new code for all of them in the same epoch.
+
+## FAQ
+
+**Why does a slow recoverer pay a bigger bill but a smaller multiple?** More hours down always costs more. But only the hours overlapping the cohort's outage are scaled; after that you're back at ~1× while today's rules keep charging linearly. So revised ÷ today shrinks the longer you take. A fast responder might pay 30× today's rate on a small bill; a straggler 5× on a bigger one.
+
+**Does this hurt solo stakers or small operators?** No. Uncorrelated downtime pays exactly today's penalties. The mechanism bites when a meaningful share of stake fails simultaneously, which is characteristically a large-operator, shared-infrastructure or majority-client failure. Even a failure hitting every home setup at once is a small event here: solo and home stakers are a low single-digit percent of stake, so a ~3% cohort draws a ~24× onset and a lifetime bound near 0.6% of principal.
+
+**My client attested with the wrong target during someone else's bug. Am I scaled?** No. Scaling requires missing both source and target flags.
+
+**What is the absolute worst case?** ~0.75% of principal per day while ~⅓ of stake is newly offline and you're fully down, decaying as the average catches up, with a lifetime bound of ~0.2× the event size. Principal-scale losses remain exclusive to the pre-existing inactivity leak and slashing.
+
+**Could 0.75%/day run for weeks if a bug takes that long to fix?** No. Example: 30% of the network down for a month (below ⅓, so no leak) starts at ~0.66%/day, ~0.33%/day by day 6, ~0.06%/day by day 25; lifetime extra ≈ 6% of principal, half of it in the first week. Coming back online stops the scaling instantly. For comparison, if the same scenario crossed ⅓, the pre-existing leak alone takes ~50% of principal in 18 days.
+
+**Does the normal background offline rate change these numbers?** No. ~0.3% is offline at any moment; the moving average sits there, and the factor prices only the excess above it.
+
+**Where do the extra penalties go?** Burned.
+
+**I run a large share of stake. How should I read these numbers?** Multiply per-32-ETH figures by validator count. If your whole fleet shares one client, cloud or team, your event size is your fleet size.
+
+**When would this go live?** EIP-7716 is Draft and Proposed for Inclusion in Hegotá. The Hegotá scope is still being decided; check https://forkcast.org/eips/7716 for the current status.
+
+**I run a backup beacon node on a different client. Am I protected?** From downtime, yes. From a wrong fork, no: a fallback uses whichever node answers. Protection comes from requiring agreement across nodes running different clients, so the setup halts instead of signing when they disagree.
+
+**How do operators avoid correlated penalties?** Fail alone, not together: run a minority client, avoid the most crowded cloud providers and regions, stagger upgrades instead of rolling a whole fleet at once, and consider distributed validators, which keep attesting if part of the cluster fails and halt rather than sign a fork only some nodes see.
+
+## Using the calculator programmatically
+
+Every input lives in the query string of https://validatordowntime.obol.org/ :
+
+| Param | Meaning | Range | Default |
+|---|---|---|---|
+| `event` | % of total stake offline together | 0–45 | 10 |
+| `cohort` | hours the cohort stays down | 0.5–72 | 6 |
+| `you` | your hours down | 0.5–72 | 24 |
+| `stake` | your stake in ETH | 1–10,000,000 | 32 |
+| `price` | ETH price in USD | 1–1,000,000 | 2450 |
+
+Example: https://validatordowntime.obol.org/?event=19&cohort=4&you=4 (the Nethermind January 2024 shape). FAQ entries are linkable by id, e.g. https://validatordowntime.obol.org/#sustained-outages
+
+The calculation engine is plain TypeScript with no dependencies: https://github.com/ObolNetwork/validator-downtime/blob/main/src/lib/penaltyCalculator.ts . The integer-exact model, backtests and figures live in https://github.com/OisinKyne/7716 .
+
+## Disclaimer
+
+This tool models a Draft EIP using an approved simplification (exact within ~5% for events ≤48h) and network economics that drift daily. It is education, not financial advice.
