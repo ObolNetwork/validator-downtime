@@ -1,13 +1,15 @@
 /**
  * EIP-7716 Anti-Correlation Attestation Penalties — Constants
  *
- * Revised mechanism (2026, PR ethereum/EIPs#11962, PFI for the Hegotá fork).
+ * Revised mechanism (2026; merged into the EIP via ethereum/EIPs#11962, Draft
+ * status, Proposed for Inclusion in the Hegotá fork).
  * The 2024 draft's NET_EXCESS_PENALTIES counter is gone; the revised mechanism
  * compares each slot's offline balance to a slow-moving average of itself and
  * scales the timely-target penalty by the excess.
  *
  * Sources of truth:
- * - EIP text: https://github.com/ethereum/EIPs/pull/11962
+ * - EIP text: https://eips.ethereum.org/EIPS/eip-7716
+ * - Fork-inclusion status: https://forkcast.org/eips/7716
  * - Research: https://github.com/OisinKyne/7716
  * - consensus-specs: https://github.com/ethereum/consensus-specs/pull/5452
  */

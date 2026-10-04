@@ -211,8 +211,8 @@ export function PenaltyResults({
                 moment finality resumes; in reality the inactivity score decays over the
                 following hours, so validators still offline then bleed slightly more —
                 negligible for short leaks, ~15–20% extra for stragglers after multi-day ones.
-                This is a draft EIP under discussion for the Hegotá fork — numbers are
-                estimates, not guarantees.
+                EIP-7716 is a Draft EIP proposed for inclusion in the Hegotá fork — numbers
+                are estimates, not guarantees.
               </p>
             </div>
           </div>

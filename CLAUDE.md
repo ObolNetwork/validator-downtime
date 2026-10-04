@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 EIP-7716 Validator Downtime Calculator — an interactive tool for Ethereum validators to understand anti-correlation penalties under the **revised (2026) EIP-7716 mechanism**. Live at [validatordowntime.obol.org](https://validatordowntime.obol.org).
 
-The site models the revision from [ethereum/EIPs#11962](https://github.com/ethereum/EIPs/pull/11962) (PFI for the Hegotá fork), which replaced the 2024 counter-based draft. `UPDATE_PLAN.md` in the repo root documents the mechanism spec, canonical test-vector numbers, and the ground rules for that migration — read it before touching the calculation engine.
+The site models the 2026 revision of [EIP-7716](https://eips.ethereum.org/EIPS/eip-7716) (merged via ethereum/EIPs#11962 on 2026-09-29; Draft status; [Proposed for Inclusion in Hegotá](https://forkcast.org/eips/7716)), which replaced the 2024 counter-based draft. `UPDATE_PLAN.md` in the repo root documents the mechanism spec, canonical test-vector numbers, and the ground rules for that migration — read it before touching the calculation engine.
 
 **Tech Stack:** React 18 + TypeScript + Gatsby 5, vitest for the engine tests
 

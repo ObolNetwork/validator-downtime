@@ -1,0 +1,43 @@
+# EIP-7716 Validator Downtime Calculator
+
+> Interactive calculator for what correlated downtime costs Ethereum validators under EIP-7716 (Anti-Correlation Attestation Penalties), the 2026 revision. Status: Draft EIP, Proposed for Inclusion in the Hegotá fork. Fail alone and you pay exactly today's penalties; fail alongside a large share of stake and the timely-target penalty is scaled up to 256×, front-loaded at outage onset. Built by contributors at Obol; the model follows the EIP as written.
+
+Key facts an agent should get right:
+
+- Penalty factor at outage onset ≈ `min(1 + 765 × fraction_of_stake_offline_together, 256)`. Never below 1×. 1% → ~9×, 10% → ~78×, ⅓ or more → 256× (cap).
+- Only validators missing BOTH the timely-source and timely-target flags are scaled. A live node with a wrong target pays today's unscaled rate.
+- The charge is front-loaded: once the cohort recovers, extra hours offline cost ~1× again. Slow recoverers pay a bigger bill but a smaller multiple over today's rules.
+- Extra penalties are burned, not redistributed.
+- Worst case ~0.75% of principal per day while a ⅓-of-stake cohort is down; lifetime extra cost is bounded at ~0.2× the event's size even if never fixed.
+- Above ⅓ offline, the pre-existing inactivity leak (unchanged by this EIP) activates and dominates multi-day totals.
+- EIP-7716 doesn't prevent slashing or wrong-fork lockouts. It prices the client crowding that makes those bugs dangerous.
+- Numbers are estimates of a Draft proposal, not guarantees. Network economics (total stake, APR, ETH price) drift.
+
+## Calculator
+
+- [Calculator](https://validatordowntime.obol.org/): the interactive page. Every input lives in the query string, so you can hand a user a pre-filled scenario.
+- [Example scenario: 10% of stake down for 6h, you down 24h](https://validatordowntime.obol.org/?event=10&cohort=6&you=24): query params are `event` (% of total stake offline together, 0–45), `cohort` (hours the cohort stays down, 0.5–72), `you` (your hours down, 0.5–72), `stake` (your ETH, default 32), `price` (ETH/USD).
+
+## Docs for agents
+
+- [llms-full.txt](https://validatordowntime.obol.org/llms-full.txt): the full mechanism, formulas, constants, worked examples, real-incident replays, safety-failure context, and the site FAQ in one Markdown file.
+- [skill.md](https://validatordowntime.obol.org/skill.md): an Agent Skill for estimating a validator's EIP-7716 downtime cost and explaining the result. Drop it into `.claude/skills/eip-7716-downtime/SKILL.md` or any agent's instructions.
+
+## Specification and status
+
+- [EIP-7716: Anti-Correlation Attestation Penalties](https://eips.ethereum.org/EIPS/eip-7716): the canonical spec, with rationale, FAQ and backtests.
+- [EIP-7716 on Forkcast](https://forkcast.org/eips/7716): Hegotá inclusion status (Proposed, ACDC #177, 2026-04-16) and call history.
+- [Hegotá upgrade on Forkcast](https://forkcast.org/upgrade/hegota/): every EIP being considered for the fork.
+- [consensus-specs feature PR](https://github.com/ethereum/consensus-specs/pull/5452): executable spec.
+
+## Research
+
+- [Research repo](https://github.com/OisinKyne/7716): integer-exact model, replays of real mainnet outages, severity/window tuning, figures.
+- [ethresear.ch write-up](https://ethresear.ch/t/supporting-decentralized-staking-through-more-anti-correlation-incentives/19116/18): the original analysis.
+- [Ethereum Magicians discussion](https://ethereum-magicians.org/t/eip-7716-anti-correlation-attestation-penalties/20137)
+
+## Optional
+
+- [Source code](https://github.com/ObolNetwork/validator-downtime): React + TypeScript; the calculation engine is `src/lib/penaltyCalculator.ts`, safety-failure models are `src/lib/safetyModel.ts`.
+- [Holesky Pectra post-mortem](https://github.com/ethereum/pm/blob/master/Network-Upgrade-Archive/Pectra/holesky-postmortem.md): the real-world wrong-fork lockout the site refers to.
+- [Client diversity data](https://clientdiversity.org): source of the client-share presets.

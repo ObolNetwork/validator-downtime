@@ -11,7 +11,7 @@ export function Header() {
 
         <nav className="header-nav">
           <a
-            href="https://github.com/ethereum/EIPs/pull/11962"
+            href="https://eips.ethereum.org/EIPS/eip-7716"
             target="_blank"
             rel="noopener noreferrer"
           >

@@ -2,7 +2,7 @@
 
 [![EIP-7716 Validator Downtime Calculator](static/og-image.png)](https://validatordowntime.obol.org)
 
-Interactive tool for understanding what correlated downtime costs Ethereum validators under the **revised EIP-7716** anti-correlation penalties (2026 mechanism, [ethereum/EIPs#11962](https://github.com/ethereum/EIPs/pull/11962), proposed for the Hegotá fork), and what that extra cost buys down.
+Interactive tool for understanding what correlated downtime costs Ethereum validators under the **revised EIP-7716** anti-correlation penalties (2026 mechanism, [EIP-7716](https://eips.ethereum.org/EIPS/eip-7716), Draft status, [Proposed for Inclusion in Hegotá](https://forkcast.org/eips/7716)), and what that extra cost buys down.
 
 **Live site**: [validatordowntime.obol.org](https://validatordowntime.obol.org)
 
@@ -85,7 +85,8 @@ Pushes to `main` deploy automatically to GitHub Pages via GitHub Actions.
 
 ## Resources
 
-- [EIP-7716 revision PR (constants, FAQ, rationale)](https://github.com/ethereum/EIPs/pull/11962)
+- [EIP-7716 specification (constants, FAQ, rationale)](https://eips.ethereum.org/EIPS/eip-7716)
+- [EIP-7716 on Forkcast (Hegotá inclusion status)](https://forkcast.org/eips/7716)
 - [Research repo: replays, severity/window tuning, figures](https://github.com/OisinKyne/7716)
 - [ethresear.ch analysis write-up](https://ethresear.ch/t/supporting-decentralized-staking-through-more-anti-correlation-incentives/19116/18)
 - [consensus-specs feature PR](https://github.com/ethereum/consensus-specs/pull/5452)

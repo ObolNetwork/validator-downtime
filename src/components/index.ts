@@ -7,3 +7,4 @@ export { Header } from "./Header";
 export { Footer } from "./Footer";
 export { PainToScale } from "./PainToScale";
 export { ClientFailureTiers } from "./ClientFailureTiers";
+export { AskAnAgent } from "./AskAnAgent";
